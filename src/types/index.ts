@@ -20,23 +20,20 @@ export interface NavItem {
   roles?: UserRole[] // Roles that can see this nav item
 }
 
-// Added College interface for shared use
 export interface College {
   college_id: number;
   name: string;
-  address: string; // Kept for completeness, though not strictly needed by CreateUserForm
+  address: string;
   email?: string;
   phone?: string;
 }
 
-// Added Department interface (basic for now)
 export interface Department {
   department_id: number;
   name: string;
   college_id?: number; // To associate with a college
 }
 
-// Added Class interface
 export interface Class {
   class_id: number;
   class_name: string;
@@ -44,4 +41,14 @@ export interface Class {
   department_name?: string; // For display purposes
   academic_year: string;
   college_id?: number; // To associate with a college
+}
+
+export interface Subject {
+  subject_id: number;
+  class_id: number;
+  class_name?: string; // For display purposes
+  subject_code: string;
+  subject_name: string;
+  type: "Theory" | "Practical" | "Other"; // Or a more generic string if preferred
+  college_id?: number; // To associate with a college (via class)
 }

@@ -1,0 +1,16 @@
+
+import { z } from 'zod';
+
+export const createSubjectSchema = z.object({
+  class_id: z.string() // Value from Select is string
+    .min(1, { message: "Please select a class."})
+    .transform(val => parseInt(val, 10))
+    .refine(val => !isNaN(val) && val > 0, { message: "Invalid class ID."}),
+  subject_code: z.string().min(2, { message: 'Subject code must be at least 2 characters.' }).max(20, { message: 'Subject code must be 20 characters or less.' }),
+  subject_name: z.string().min(3, { message: 'Subject name must be at least 3 characters.' }).max(100, { message: 'Subject name must be 100 characters or less.' }),
+  type: z.enum(["Theory", "Practical", "Other"], {
+    errorMap: () => ({ message: "Please select a valid subject type." }),
+  }),
+});
+
+export type CreateSubjectFormValues = z.infer<typeof createSubjectSchema>;

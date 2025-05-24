@@ -6,8 +6,9 @@ import { loginSchema, type LoginFormValues } from '@/schemas/auth'
 import { createCollegeSchema, type CreateCollegeFormValues } from '@/schemas/college';
 import { createUserSchema, type CreateUserFormValues } from '@/schemas/user';
 import { createDepartmentSchema, type CreateDepartmentFormValues } from '@/schemas/department';
-import { createClassSchema, type CreateClassFormValues } from '@/schemas/class'; // New import
-import type { User, UserRole, Department, College, Class } from '@/types' // Added Class
+import { createClassSchema, type CreateClassFormValues } from '@/schemas/class';
+import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject'; // New import
+import type { User, UserRole, Department, College, Class, Subject } from '@/types' // Added Subject
 import { redirect } from 'next/navigation'
 import { SignJWT, jwtVerify, decodeJwt } from 'jose'
 import { revalidatePath } from 'next/cache';
@@ -29,10 +30,12 @@ const mockUsers: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { em
 let mockCreatedUsers: (User & {password: string, college_id?: number})[] = [];
 let mockCreatedColleges: College[] = [];
 let mockCreatedDepartments: Department[] = [];
-let mockCreatedClasses: Class[] = []; // New mock store for classes
+let mockCreatedClasses: Class[] = [];
+let mockCreatedSubjects: Subject[] = []; // New mock store for subjects
+
 
 async function createMockToken(userPayload: {
-  user_id: number; // Changed from string to number
+  user_id: number;
   role: UserRole;
   name: string | null;
   email: string | null;
@@ -41,7 +44,7 @@ async function createMockToken(userPayload: {
   const secret = new TextEncoder().encode(MOCK_JWT_SECRET);
   const alg = 'HS256';
 
-  return await new SignJWT(userPayload) // Use the payload directly
+  return await new SignJWT(userPayload)
     .setProtectedHeader({ alg })
     .setIssuedAt()
     .setExpirationTime('7d') 
@@ -72,28 +75,27 @@ export async function loginUser(
             name: createdUser.name,
             email: createdUser.email,
             role: createdUser.role,
-            passwordSimple: createdUser.password, // This is not ideal, but it's how mockUsers is structured
+            passwordSimple: createdUser.password,
             college_id: createdUser.college_id,
         };
     }
   }
   
-  // Fallback for generic student user if password matches common test passwords
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
     userToAuthData = {
-      id: String(Date.now()), // Generate a somewhat unique ID
+      id: String(Date.now()), 
       name: `User ${email.split('@')[0]}`,
       email: email,
-      role: 'STUDENT', // Default to STUDENT if not a predefined user
+      role: 'STUDENT', 
       passwordSimple: password,
-      college_id: 1, // Default college_id for mock students
+      college_id: 1, 
     };
   }
 
 
   if (userToAuthData) {
     const jwtPayload = {
-      user_id: parseInt(userToAuthData.id, 10), // Ensure user_id is a number for the token
+      user_id: parseInt(userToAuthData.id, 10), 
       role: userToAuthData.role,
       name: userToAuthData.name,
       email: userToAuthData.email,
@@ -142,7 +144,7 @@ export async function createCollege(
   }
   
   const mockCreatedCollege: College = {
-    college_id: Math.floor(Math.random() * 10000) + 100, // Ensure unique enough ID for mock
+    college_id: Math.floor(Math.random() * 10000) + 100, 
     ...validatedFields.data,
   };
   mockCreatedColleges.push(mockCreatedCollege);
@@ -187,7 +189,7 @@ export async function createUser(
   mockCreatedUsers.push(newUser);
   console.log('Mock Creating user:', newUser);
   
-  // revalidatePath('/admin/users'); // Consider if user list display is implemented
+  // revalidatePath('/admin/users');
 
   return {
     success: true,
@@ -251,11 +253,8 @@ export async function createClass(
   const { class_name, department_id, academic_year } = validatedFields.data;
   const collegeId = user.college_id;
 
-  // Optional: Validate if department_id belongs to the user's college_id (more complex for mocks)
-  // For now, we assume the dropdown in the form correctly lists departments for the admin's college.
-
   const newClass: Class = {
-    class_id: Math.floor(Math.random() * 100000) + 1000, // Mock ID
+    class_id: Math.floor(Math.random() * 100000) + 1000, 
     class_name,
     department_id,
     academic_year,
@@ -271,5 +270,52 @@ export async function createClass(
     success: true,
     message: `Class "${class_name}" (mock) for academic year ${academic_year} created successfully.`,
     class: newClass,
+  };
+}
+
+export async function createSubject(
+  values: CreateSubjectFormValues
+): Promise<{ success: boolean; error?: string; message?: string; subject?: Subject }> {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  const user = await getUserFromCookies(cookies());
+  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins can create subjects, or college ID is missing.' };
+  }
+
+  const validatedFields = createSubjectSchema.safeParse(values);
+  if (!validatedFields.success) {
+    return { success: false, error: 'Invalid input for creating subject.' };
+  }
+
+  const { class_id, subject_code, subject_name, type } = validatedFields.data;
+  
+  // Optional: Validate if class_id belongs to the user's college_id
+  // For now, we assume the class dropdown in the form correctly lists classes for the admin's college.
+  // We can retrieve the class from mockCreatedClasses to get its college_id if needed for further validation.
+  const associatedClass = mockCreatedClasses.find(c => c.class_id === class_id);
+  if (!associatedClass || associatedClass.college_id !== user.college_id) {
+     return { success: false, error: 'Invalid class selection or class does not belong to your college.' };
+  }
+
+
+  const newSubject: Subject = {
+    subject_id: Math.floor(Math.random() * 1000000) + 5000, // Mock ID
+    class_id,
+    subject_code,
+    subject_name,
+    type,
+    college_id: user.college_id, // Store college_id for easier filtering later if needed
+  };
+
+  mockCreatedSubjects.push(newSubject);
+  console.log(`Mock Creating subject "${subject_name}" (Code: ${subject_code}) for class ID ${class_id}:`, newSubject);
+
+  revalidatePath('/college-admin/subjects');
+
+  return {
+    success: true,
+    message: `Subject "${subject_name}" (mock) of type "${type}" added to class ID ${class_id} successfully.`,
+    subject: newSubject,
   };
 }
