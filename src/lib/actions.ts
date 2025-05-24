@@ -8,8 +8,9 @@ import { createUserSchema, type CreateUserFormValues } from '@/schemas/user';
 import { createDepartmentSchema, type CreateDepartmentFormValues } from '@/schemas/department';
 import { createClassSchema, type CreateClassFormValues } from '@/schemas/class';
 import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject';
-import { createExamSchema, type CreateExamFormValues } from '@/schemas/exam'; // New import
-import type { User, UserRole, Department, College, Class, Subject, Exam } from '@/types' // Added Exam
+import { createExamSchema, type CreateExamFormValues } from '@/schemas/exam';
+import { assignSubjectsToExamSchema, type AssignSubjectsToExamFormValues } from '@/schemas/examSubjectMap'; // New import
+import type { User, UserRole, Department, College, Class, Subject, Exam, ExamSubjectMap } from '@/types'
 import { redirect } from 'next/navigation'
 import { SignJWT, jwtVerify, decodeJwt } from 'jose'
 import { revalidatePath } from 'next/cache';
@@ -34,7 +35,8 @@ let mockCreatedColleges: College[] = [];
 let mockCreatedDepartments: Department[] = [];
 let mockCreatedClasses: Class[] = [];
 let mockCreatedSubjects: Subject[] = [];
-let mockCreatedExams: Exam[] = []; // New mock store for exams
+let mockCreatedExams: Exam[] = [];
+let mockExamSubjectMaps: ExamSubjectMap[] = []; // New mock store for exam-subject mappings
 
 
 async function createMockToken(userPayload: {
@@ -78,28 +80,27 @@ export async function loginUser(
             name: createdUser.name,
             email: createdUser.email,
             role: createdUser.role,
-            passwordSimple: createdUser.password, // This is illustrative; in real app, compare hashed passwords
+            passwordSimple: createdUser.password, 
             college_id: createdUser.college_id,
         };
     }
   }
   
-  // Generic student fallback if no specific user is found but a common password is used
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
     userToAuthData = {
-      id: String(Date.now()), // Temporary unique ID
+      id: String(Date.now()), 
       name: `User ${email.split('@')[0]}`,
       email: email,
-      role: 'STUDENT', // Default role for generic login
+      role: 'STUDENT', 
       passwordSimple: password,
-      college_id: 1, // Default college_id for generic student
+      college_id: 1, 
     };
   }
 
 
   if (userToAuthData) {
     const jwtPayload = {
-      user_id: parseInt(userToAuthData.id, 10), // Ensure user_id is number
+      user_id: parseInt(userToAuthData.id, 10),
       role: userToAuthData.role,
       name: userToAuthData.name,
       email: userToAuthData.email,
@@ -113,7 +114,7 @@ export async function loginUser(
         secure: process.env.NODE_ENV === 'production',
         path: '/',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 1 week
+        maxAge: 60 * 60 * 24 * 7, 
       });
       return { success: true, user: {
         id: userToAuthData.id, 
@@ -133,14 +134,14 @@ export async function loginUser(
 
 export async function logoutUser() {
   const cookieStore = cookies()
-  cookieStore.delete(AUTH_COOKIE_NAME, { path: '/' }); // Use delete for clarity
+  cookieStore.delete(AUTH_COOKIE_NAME, { path: '/' });
   redirect('/login');
 }
 
 export async function createCollege(
   values: CreateCollegeFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; college?: College }> {
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   const validatedFields = createCollegeSchema.safeParse(values);
   if (!validatedFields.success) {
@@ -166,7 +167,7 @@ export async function createCollege(
 export async function createUser(
   values: CreateUserFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; user?: User & { college_id?: number } }> {
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   const validatedFields = createUserSchema.safeParse(values);
   if (!validatedFields.success) {
@@ -193,7 +194,7 @@ export async function createUser(
   mockCreatedUsers.push(newUser);
   console.log('Mock Creating user:', newUser);
   
-  // revalidatePath('/admin/users'); // Revalidation might be desired here
+  // revalidatePath('/admin/users');
 
   return {
     success: true,
@@ -205,7 +206,7 @@ export async function createUser(
 export async function createDepartment(
   values: CreateDepartmentFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; department?: Department }> {
-  await new Promise(resolve => setTimeout(resolve, 1000)); 
+  await new Promise(resolve => setTimeout(resolve, 500)); 
 
   const user = await getUserFromCookies(cookies());
 
@@ -242,7 +243,7 @@ export async function createDepartment(
 export async function createClass(
   values: CreateClassFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; class?: Class }> {
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   const user = await getUserFromCookies(cookies());
   if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
@@ -280,7 +281,7 @@ export async function createClass(
 export async function createSubject(
   values: CreateSubjectFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; subject?: Subject }> {
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   const user = await getUserFromCookies(cookies());
   if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
@@ -294,15 +295,6 @@ export async function createSubject(
 
   const { class_id, subject_code, subject_name, type } = validatedFields.data;
   
-  const associatedClass = mockCreatedClasses.find(c => c.class_id === class_id);
-   if (!associatedClass) { // For mock, check if class exists in our mock list
-     // In a real app, you'd also verify if associatedClass.college_id === user.college_id
-     // but since getMockClassesForCollegeAdmin in form is not strictly filtering by college_id,
-     // this check is simplified for mock environment.
-     console.warn(`Attempt to create subject for non-existent or unauthorized class ID: ${class_id}`);
-     // return { success: false, error: 'Invalid class selection or class does not belong to your college.' };
-   }
-
   const newSubject: Subject = {
     subject_id: Math.floor(Math.random() * 1000000) + 5000, 
     class_id,
@@ -327,20 +319,16 @@ export async function createSubject(
 export async function createExam(
   values: CreateExamFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; exam?: Exam }> {
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   const user = await getUserFromCookies(cookies());
   if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
     return { success: false, error: 'Unauthorized: Only College Admins can create exams, or college ID is missing.' };
   }
-
-  // Validation happens via schema in the form component.
-  // The `values` received here should already be transformed by createExamSchema.
-  // For example, dates are already strings.
   
   const newExam: Exam = {
-    exam_id: Math.floor(Math.random() * 1000000) + 10000, // Mock ID
-    ...values, // Spread validated and transformed values
+    exam_id: Math.floor(Math.random() * 1000000) + 10000, 
+    ...values, 
     college_id: user.college_id,
   };
 
@@ -353,5 +341,71 @@ export async function createExam(
     success: true,
     message: `Exam "${newExam.name}" (mock) created successfully for class ID ${newExam.class_id}.`,
     exam: newExam,
+  };
+}
+
+export async function assignSubjectsToExam(
+  values: AssignSubjectsToExamFormValues
+): Promise<{ success: boolean; error?: string; message?: string; mappings?: ExamSubjectMap[] }> {
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  const user = await getUserFromCookies(cookies());
+  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins can assign subjects, or college ID is missing.' };
+  }
+
+  const validatedFields = assignSubjectsToExamSchema.safeParse(values);
+  if (!validatedFields.success) {
+    return { success: false, error: 'Invalid input for assigning subjects to exam.' };
+  }
+
+  const { exam_id, subject_ids } = validatedFields.data;
+  const collegeId = user.college_id;
+
+  // In a real app, verify exam_id belongs to collegeId
+  const examExists = mockCreatedExams.some(e => e.exam_id === exam_id && e.college_id === collegeId) || 
+                     (exam_id === 301 || exam_id === 302 || exam_id === 303); // Allow assignment to initial mock exams
+  
+  if (!examExists) {
+    return { success: false, error: `Exam with ID ${exam_id} not found in your college.` };
+  }
+
+  const createdMappings: ExamSubjectMap[] = [];
+
+  subject_ids.forEach(subject_id => {
+    // In a real app, verify subject_id belongs to collegeId and is valid for the exam's class
+    const mappingExists = mockExamSubjectMaps.some(
+      m => m.exam_id === exam_id && m.subject_id === subject_id && m.college_id === collegeId
+    );
+
+    if (!mappingExists) {
+      const newMapping: ExamSubjectMap = {
+        mapping_id: Math.floor(Math.random() * 10000000) + 100000,
+        exam_id,
+        subject_id,
+        college_id: collegeId,
+      };
+      mockExamSubjectMaps.push(newMapping);
+      createdMappings.push(newMapping);
+    }
+  });
+
+  console.log(`Mock Assigning ${subject_ids.length} subjects to exam ID ${exam_id} for college ID ${collegeId}:`, createdMappings);
+  
+  // Optionally update the exam object in mockCreatedExams to include assigned_subject_ids
+  const examIndex = mockCreatedExams.findIndex(e => e.exam_id === exam_id);
+  if (examIndex > -1) {
+    const currentAssigned = new Set(mockCreatedExams[examIndex].assigned_subject_ids || []);
+    subject_ids.forEach(id => currentAssigned.add(id));
+    mockCreatedExams[examIndex].assigned_subject_ids = Array.from(currentAssigned);
+  }
+
+
+  revalidatePath('/college-admin/exams'); // Revalidate to potentially show updated info if we display it
+
+  return {
+    success: true,
+    message: `${createdMappings.length} new subject(s) assigned to exam ID ${exam_id} successfully. Some may have been assigned previously.`,
+    mappings: createdMappings,
   };
 }

@@ -5,25 +5,29 @@ import * as React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Newspaper, PlusCircle } from "lucide-react";
-import { CreateExamForm } from '@/components/college-admin/CreateExamForm'; // New form
-import type { Exam } from '@/types'; // Import Exam type
+import { Newspaper, PlusCircle, BookOpenCheck } from "lucide-react";
+import { format } from 'date-fns';
+import { CreateExamForm } from '@/components/college-admin/CreateExamForm'; 
+import { AssignSubjectsToExamForm } from '@/components/college-admin/AssignSubjectsToExamForm'; // New form
+import type { Exam } from '@/types'; 
 
 // Mock function to get exams for display
 async function getMockExams(collegeId?: number): Promise<Exam[]> {
   await new Promise(resolve => setTimeout(resolve, 500)); 
-  // Placeholder classes for enriching exam data
   const mockClasses = [
     { class_id: 101, class_name: "1st PUC Science" },
     { class_id: 102, class_name: "2nd PUC Commerce" },
   ];
 
   const allExams: Exam[] = [
-    { exam_id: 301, class_id: 101, name: "Physics Midterm I", marks: 50, min_marks: 17, start_date: "2024-08-15", end_date: "2024-08-15", college_id: 1 },
-    { exam_id: 302, class_id: 102, name: "Accountancy Unit Test 1", marks: 25, min_marks: 9, start_date: "2024-09-01", end_date: "2024-09-01", college_id: 1 },
+    { exam_id: 301, class_id: 101, name: "Physics Midterm I", marks: 50, min_marks: 17, start_date: "2024-08-15", end_date: "2024-08-15", college_id: 1, assigned_subject_ids: [201, 205] },
+    { exam_id: 302, class_id: 102, name: "Accountancy Unit Test 1", marks: 25, min_marks: 9, start_date: "2024-09-01", end_date: "2024-09-01", college_id: 1, assigned_subject_ids: [206] },
     { exam_id: 303, class_id: 101, name: "Chemistry Final Practical", marks: 30, min_marks: 10, start_date: "2025-03-10", end_date: "2025-03-12", college_id: 1 },
   ];
   
+  // In a real app, newly created exams from `mockCreatedExams` in actions.ts should also be fetched here.
+  // For this mock, we are only showing the static list above.
+
   return allExams
     .filter(e => collegeId ? e.college_id === collegeId : true)
     .map(e => ({
@@ -36,7 +40,10 @@ async function getMockExams(collegeId?: number): Promise<Exam[]> {
 export default function ManageExamsPage() {
   const [exams, setExams] = React.useState<Exam[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isCreateExamDialogOpen, setIsCreateExamDialogOpen] = React.useState(false);
+  const [isAssignSubjectsDialogOpen, setIsAssignSubjectsDialogOpen] = React.useState(false);
+  const [currentExamForAssignment, setCurrentExamForAssignment] = React.useState<Exam | null>(null);
+
 
   // TODO: In a real app, get the logged-in college admin's college_id
   const collegeAdminCollegeId = 1; // Placeholder
@@ -54,6 +61,18 @@ export default function ManageExamsPage() {
   const handleExamCreated = () => {
     // For now, with static mock getMockExams, this won't auto-refresh the list.
     console.log("Exam created, ideally re-fetch or update list.");
+    // To see new exams, getMockExams would need to be dynamic or merge with `mockCreatedExams` from actions.ts
+    // For demo purposes, we could re-call loadExams() to see changes IF mock data source was mutable and shared.
+  };
+
+  const handleSubjectsAssigned = () => {
+    console.log("Subjects assigned to exam, ideally re-fetch or update exam details.");
+    // Similar to above, to see changes to `assigned_subject_ids` in the list, `getMockExams` would need to reflect this.
+  }
+
+  const openAssignSubjectsDialog = (exam: Exam) => {
+    setCurrentExamForAssignment(exam);
+    setIsAssignSubjectsDialogOpen(true);
   };
 
   return (
@@ -65,21 +84,21 @@ export default function ManageExamsPage() {
             Create exams for classes and assign subjects to them.
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isCreateExamDialogOpen} onOpenChange={setIsCreateExamDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Exam
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[480px]"> {/* Adjusted width for more fields */}
+          <DialogContent className="sm:max-w-[480px]"> 
             <DialogHeader>
               <DialogTitle>Create New Exam</DialogTitle>
               <DialogDescription>
                 Fill in the details below to add a new exam for a class.
               </DialogDescription>
             </DialogHeader>
-            <CreateExamForm onSuccess={handleExamCreated} setDialogOpen={setIsDialogOpen} />
+            <CreateExamForm onSuccess={handleExamCreated} setDialogOpen={setIsCreateExamDialogOpen} />
           </DialogContent>
         </Dialog>
       </div>
@@ -95,11 +114,26 @@ export default function ManageExamsPage() {
             <ul className="space-y-4">
               {exams.map((exam) => (
                 <li key={exam.exam_id} className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-semibold">{exam.name}</h3>
-                  <p className="text-sm text-muted-foreground">ID: {exam.exam_id} | Class: {exam.class_name} (ID: {exam.class_id})</p>
-                  <p className="text-sm text-muted-foreground">Marks: {exam.marks} | Min. Passing: {exam.min_marks}</p>
-                  <p className="text-sm text-muted-foreground">Dates: {format(new Date(exam.start_date), "MMM dd, yyyy")} - {format(new Date(exam.end_date), "MMM dd, yyyy")}</p>
-                  {/* TODO: Add Edit/Delete/Assign Subjects buttons here */}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold">{exam.name}</h3>
+                      <p className="text-sm text-muted-foreground">ID: {exam.exam_id} | Class: {exam.class_name} (ID: {exam.class_id})</p>
+                      <p className="text-sm text-muted-foreground">Marks: {exam.marks} | Min. Passing: {exam.min_marks}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Dates: {format(new Date(exam.start_date), "MMM dd, yyyy")} - {format(new Date(exam.end_date), "MMM dd, yyyy")}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Assigned Subjects: {exam.assigned_subject_ids?.join(', ') || 'None'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col space-y-2">
+                        <Button variant="outline" size="sm" onClick={() => openAssignSubjectsDialog(exam)}>
+                            <BookOpenCheck className="mr-2 h-4 w-4" />
+                            Assign Subjects
+                        </Button>
+                        {/* TODO: Add Edit/Delete buttons here */}
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -108,6 +142,24 @@ export default function ManageExamsPage() {
           )}
         </CardContent>
       </Card>
+
+      {currentExamForAssignment && (
+        <Dialog open={isAssignSubjectsDialogOpen} onOpenChange={setIsAssignSubjectsDialogOpen}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Assign Subjects to Exam</DialogTitle>
+              <DialogDescription>
+                Select subjects for "{currentExamForAssignment.name}".
+              </DialogDescription>
+            </DialogHeader>
+            <AssignSubjectsToExamForm
+              exam={currentExamForAssignment}
+              onSuccess={handleSubjectsAssigned}
+              setDialogOpen={setIsAssignSubjectsDialogOpen}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

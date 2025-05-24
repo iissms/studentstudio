@@ -63,4 +63,12 @@ export interface Exam {
   start_date: string; // YYYY-MM-DD
   end_date: string; // YYYY-MM-DD
   college_id?: number; // To associate with a college (via class)
+  assigned_subject_ids?: number[]; // Optional: For easier tracking or display
+}
+
+export interface ExamSubjectMap {
+  mapping_id: number; // A unique ID for the mapping itself
+  exam_id: number;
+  subject_id: number;
+  college_id: number; // college_id for context, same as exam's college_id
 }
