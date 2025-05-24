@@ -12,7 +12,7 @@ const MOCK_JWT_SECRET_KEY = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jw
 const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
 
 async function createMockJwtToken(payload: {
-  user_id: string; 
+  user_id: number; // Changed to number to match expected JWT payload
   role: UserRole;
   name: string | null;
   email: string | null;
@@ -31,6 +31,7 @@ async function createMockJwtToken(payload: {
 export async function loginUser(
   values: LoginFormValues
 ): Promise<{ success: boolean; error?: string; user?: User }> {
+  console.log("Attempting login with mock data logic for:", values.email);
   const validatedFields = loginSchema.safeParse(values);
 
   if (!validatedFields.success) {
@@ -41,11 +42,12 @@ export async function loginUser(
 
   let userToAuthData = mockUsersDb[email];
 
+  // Check mockCreatedUsers if not found in mockUsersDb
   if (!userToAuthData) {
       const createdUser = mockCreatedUsers.find(u => u.email === email);
       if (createdUser) {
           userToAuthData = {
-              ...createdUser,
+              ...createdUser, 
               id: createdUser.id, 
               passwordSimple: createdUser.password, 
           };
@@ -53,6 +55,7 @@ export async function loginUser(
   }
   
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
+    console.log(`Fallback login for ${email} as STUDENT`);
     userToAuthData = {
       id: String(Date.now()), 
       name: `User ${email.split('@')[0]}`,
@@ -65,7 +68,7 @@ export async function loginUser(
 
   if (userToAuthData && userToAuthData.passwordSimple === password) {
     const jwtPayload = {
-      user_id: userToAuthData.id, 
+      user_id: parseInt(userToAuthData.id, 10), // Convert string id to number for JWT
       role: userToAuthData.role,
       name: userToAuthData.name,
       email: userToAuthData.email,
@@ -81,6 +84,7 @@ export async function loginUser(
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7, 
       });
+      console.log("Login successful, mock token set for:", userToAuthData.email);
       return {
         success: true, user: {
           id: userToAuthData.id, 
@@ -95,7 +99,7 @@ export async function loginUser(
       return { success: false, error: 'Failed to prepare session.' };
     }
   }
-
+  console.log("Login failed for:", values.email);
   return { success: false, error: 'Invalid credentials.' };
 }
 
