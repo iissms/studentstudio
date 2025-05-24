@@ -64,14 +64,15 @@ const getNavigationItems = (role: UserRole): NavItem[] => {
     // Admin
     { title: 'Manage Colleges', href: '/admin/colleges', icon: University, roles: ['ADMIN'] },
     { title: 'Manage Users', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
-    // College Admin
+    // College Admin Specific
     { title: 'Manage Departments', href: '/college-admin/departments', icon: Building, roles: ['COLLEGE_ADMIN'] },
     { title: 'Manage Classes', href: '/college-admin/classes', icon: Library, roles: ['COLLEGE_ADMIN'] },
-    { title: 'Manage Students', href: '/college-admin/students', icon: GraduationCap, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
-    { title: 'Manage Subjects', href: '/college-admin/subjects', icon: BookCopy, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
-    { title: 'Manage Exams', href: '/college-admin/exams', icon: Newspaper, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
     { title: 'Enter Results', href: '/college-admin/results', icon: ClipboardList, roles: ['COLLEGE_ADMIN'] },
-    // Teacher
+    // Shared College Admin & Teacher
+    { title: 'Manage Students', href: '/shared-management/students', icon: GraduationCap, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
+    { title: 'Manage Subjects', href: '/shared-management/subjects', icon: BookCopy, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
+    { title: 'Manage Exams', href: '/shared-management/exams', icon: Newspaper, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
+    // Teacher Specific
     { title: 'Enter Attendance', href: '/teacher/attendance', icon: ClipboardCheck, roles: ['TEACHER'] },
     { title: 'Update Results', href: '/teacher/results', icon: NotebookTabs, roles: ['TEACHER'] },
     // Student

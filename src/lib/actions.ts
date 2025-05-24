@@ -19,8 +19,9 @@ import { getUserFromCookies } from './auth-utils';
 import { format } from 'date-fns';
 
 const MOCK_JWT_SECRET_KEY = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long-for-app';
-const MOCK_AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
 
+
+// In-memory mock databases for entities
 const mockUsersDb: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { id: string, email: string, passwordSimple: string, college_id?: number }> = {
   'admin@example.com': { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'ADMIN', passwordSimple: 'admin123' },
   'collegeadmin@example.com': { id: '2', name: 'College Admin', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', passwordSimple: 'password', college_id: 1 },
@@ -39,7 +40,7 @@ let mockCreatedStudents: Student[] = [];
 
 
 async function createMockJwtToken(payload: {
-  user_id: number;
+  user_id: number; // Ensure user_id is numeric for JWT standard
   role: UserRole;
   name: string | null;
   email: string | null;
@@ -58,6 +59,7 @@ async function createMockJwtToken(payload: {
 export async function loginUser(
   values: LoginFormValues
 ): Promise<{ success: boolean; error?: string; user?: User }> {
+  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token'
   const validatedFields = loginSchema.safeParse(values);
 
   if (!validatedFields.success) {
@@ -66,29 +68,22 @@ export async function loginUser(
 
   const { email, password } = validatedFields.data;
 
-  let userToAuthData: (Omit<User, 'id' | 'email' | 'college_id'> & { id: string; email: string; passwordSimple: string; college_id?: number }) | null = null;
+  // Check against predefined mock users
+  let userToAuthData = mockUsersDb[email];
 
-  // Check in predefined mockUsersDb
-  const specificMockUser = mockUsersDb[email];
-  if (specificMockUser && specificMockUser.passwordSimple === password) {
-    userToAuthData = specificMockUser;
-  } else {
-    // Check in dynamically created mock users (if any)
-    const createdUser = mockCreatedUsers.find(u => u.email === email && u.password === password);
-    if (createdUser) {
-      userToAuthData = {
-        id: createdUser.id,
-        name: createdUser.name,
-        email: createdUser.email,
-        role: createdUser.role,
-        passwordSimple: createdUser.password, // For consistency, though not used for auth beyond this point
-        college_id: createdUser.college_id,
-      };
-    }
+  // If not found, check against dynamically created users
+  if (!userToAuthData) {
+      const createdUser = mockCreatedUsers.find(u => u.email === email);
+      if (createdUser) {
+          userToAuthData = {
+              ...createdUser,
+              id: createdUser.id, // Keep string id
+              passwordSimple: createdUser.password, // for auth check below
+          };
+      }
   }
   
   // Generic fallback for any unlisted email with 'password', 'admin123' or 'Test@123'
-  // (Mainly for testing/demo convenience if a user isn't in the specific lists)
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
     userToAuthData = {
       id: String(Date.now()), // A pseudo-unique ID for this mock user
@@ -101,9 +96,9 @@ export async function loginUser(
   }
 
 
-  if (userToAuthData) {
+  if (userToAuthData && userToAuthData.passwordSimple === password) {
     const jwtPayload = {
-      user_id: parseInt(userToAuthData.id, 10), // Ensure user_id is number for JWT
+      user_id: parseInt(userToAuthData.id, 10), // Convert string ID to number for JWT
       role: userToAuthData.role,
       name: userToAuthData.name,
       email: userToAuthData.email,
@@ -112,7 +107,7 @@ export async function loginUser(
 
     try {
       const token = await createMockJwtToken(jwtPayload);
-      cookies().set(MOCK_AUTH_COOKIE_NAME, token, {
+      cookies().set(AUTH_COOKIE_NAME, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         path: '/',
@@ -121,7 +116,7 @@ export async function loginUser(
       });
       return {
         success: true, user: {
-          id: userToAuthData.id, // String for User interface
+          id: userToAuthData.id, // Return string ID for User interface
           name: userToAuthData.name,
           email: userToAuthData.email,
           role: userToAuthData.role,
@@ -139,7 +134,8 @@ export async function loginUser(
 
 
 export async function logoutUser() {
-  cookies().delete(MOCK_AUTH_COOKIE_NAME, { path: '/' });
+  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token'
+  cookies().delete(AUTH_COOKIE_NAME, { path: '/' });
   redirect('/login');
 }
 
@@ -312,7 +308,7 @@ export async function createSubject(
   mockCreatedSubjects.push(newSubject);
   console.log(`Mock Creating subject "${subject_name}" (Code: ${subject_code}) for class ID ${class_id}:`, newSubject);
 
-  revalidatePath('/college-admin/subjects');
+  revalidatePath('/shared-management/subjects');
 
   return {
     success: true,
@@ -340,7 +336,7 @@ export async function createExam(
   mockCreatedExams.push(newExam);
   console.log(`Mock Creating exam "${newExam.name}" for class ID ${newExam.class_id}:`, newExam);
 
-  revalidatePath('/college-admin/exams');
+  revalidatePath('/shared-management/exams');
 
   return {
     success: true,
@@ -405,7 +401,7 @@ export async function assignSubjectsToExam(
     // This part is more complex with separate static and dynamic mock lists. For now, actions focus on mockCreatedExams.
   }
 
-  revalidatePath('/college-admin/exams');
+  revalidatePath('/shared-management/exams');
 
   return {
     success: true,
@@ -442,7 +438,7 @@ export async function createStudent(
   mockCreatedStudents.push(newStudent);
   console.log(`Mock Creating student "${newStudent.full_name}" for class ID ${newStudent.class_id} in college ID ${user.college_id}:`, newStudent);
 
-  revalidatePath('/college-admin/students'); 
+  revalidatePath('/shared-management/students'); 
 
   return {
     success: true,
