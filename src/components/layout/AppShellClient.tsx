@@ -7,7 +7,7 @@ import {
   PanelLeft,
   Home,
   Users,
-  Building,
+  Building2, // Changed from Building to Building2
   BookCopy,
   ClipboardCheck,
   FileText,
@@ -65,7 +65,7 @@ const getNavigationItems = (role: UserRole): NavItem[] => {
     { title: 'Manage Colleges', href: '/admin/colleges', icon: University, roles: ['ADMIN'] },
     { title: 'Manage Users', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
     // College Admin Specific
-    { title: 'Manage Departments', href: '/college-admin/departments', icon: Building, roles: ['COLLEGE_ADMIN'] },
+    { title: 'Manage Departments', href: '/college-admin/departments', icon: Building2, roles: ['COLLEGE_ADMIN'] }, // Icon updated here
     { title: 'Manage Classes', href: '/college-admin/classes', icon: Library, roles: ['COLLEGE_ADMIN'] },
     { title: 'Enter Results', href: '/college-admin/results', icon: ClipboardList, roles: ['COLLEGE_ADMIN'] },
     // Shared College Admin & Teacher
