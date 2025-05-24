@@ -1,9 +1,13 @@
 
+'use client'; // Needs to be client component to manage dialog state
+
+import * as React from 'react'; // Import React
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlusCircle } from "lucide-react";
+import { CreateCollegeForm } from '@/components/admin/CreateCollegeForm'; // Import the new form
 
-// Updated College interface based on API documentation
 interface College {
   college_id: number;
   name: string;
@@ -12,21 +16,45 @@ interface College {
   phone?: string;
 }
 
-// Updated mock fetch function to reflect API structure
+// Keep mock fetch function for now. In a real app, this would fetch from an API.
+// Note: This mock function will not be updated by the createCollege action.
+// The list will only show these initial mock colleges.
 async function getColleges(): Promise<College[]> {
-  // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 500));
   return [
     { college_id: 1, name: "Global Institute of Technology", address: "123 Tech Park, Silicon Valley", email: "contact@git.com", phone: "123-456-7890" },
     { college_id: 2, name: "National College of Arts", address: "456 Art Lane, Culture City", email: "info@nca.edu", phone: "098-765-4321" },
-    { college_id: 3, name: "United Business School", address: "789 Commerce Ave, Metro City", email: "admin@ubs.biz" /* phone intentionally omitted for testing conditional render */ },
+    { college_id: 3, name: "United Business School", address: "789 Commerce Ave, Metro City", email: "admin@ubs.biz" },
     { college_id: 4, name: "CMC Institute", address: "Bengaluru", email: "info@cmc.edu", phone: "080-123456" },
   ];
 }
 
 
-export default async function ManageCollegesPage() {
-  const colleges = await getColleges();
+export default function ManageCollegesPage() {
+  const [colleges, setColleges] = React.useState<College[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    async function loadColleges() {
+      setIsLoading(true);
+      const fetchedColleges = await getColleges();
+      setColleges(fetchedColleges);
+      setIsLoading(false);
+    }
+    loadColleges();
+  }, []);
+
+  // This function will be called by CreateCollegeForm on success.
+  // For now, it doesn't re-fetch or update the local list as getColleges is static mock.
+  // In a real app with an API, you might re-fetch colleges here or optimistically update.
+  const handleCollegeCreated = () => {
+    // console.log("College created, ideally re-fetch or update list.");
+    // For demo with mock data, revalidatePath in action is the primary mechanism,
+    // but for pure client-side static mock `getColleges`, it won't show new items.
+    // To see the new college with mocks, `getColleges` would need to be mutable.
+  };
+
 
   return (
     <div className="space-y-6">
@@ -37,10 +65,23 @@ export default async function ManageCollegesPage() {
             View, create, and manage colleges in the system.
           </p>
         </div>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Create College
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create College
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Create New College</DialogTitle>
+              <DialogDescription>
+                Fill in the details below to add a new college to the system.
+              </DialogDescription>
+            </DialogHeader>
+            <CreateCollegeForm onSuccess={handleCollegeCreated} setDialogOpen={setIsDialogOpen} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -49,7 +90,9 @@ export default async function ManageCollegesPage() {
           <CardDescription>A list of all registered colleges.</CardDescription>
         </CardHeader>
         <CardContent>
-          {colleges.length > 0 ? (
+          {isLoading ? (
+             <p>Loading colleges...</p>
+          ) : colleges.length > 0 ? (
             <ul className="space-y-4">
               {colleges.map((college) => (
                 <li key={college.college_id} className="p-4 border rounded-md shadow-sm">
@@ -62,7 +105,7 @@ export default async function ManageCollegesPage() {
                   {college.phone && (
                     <p className="text-sm text-muted-foreground">Phone: {college.phone}</p>
                   )}
-                  {/* TODO: Add Edit/Delete buttons here, which would interact with /api/colleges/:id */}
+                  {/* TODO: Add Edit/Delete buttons here */}
                 </li>
               ))}
             </ul>
