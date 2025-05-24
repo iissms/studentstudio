@@ -10,7 +10,7 @@ import { createClassSchema, type CreateClassFormValues } from '@/schemas/class';
 import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject';
 import { createExamSchema, type CreateExamFormValues } from '@/schemas/exam';
 import { assignSubjectsToExamSchema, type AssignSubjectsToExamFormValues } from '@/schemas/examSubjectMap';
-import { createStudentSchema, type CreateStudentFormValues } from '@/schemas/student'; // New import
+import { createStudentSchema, type CreateStudentFormValues } from '@/schemas/student'; 
 import type { User, UserRole, Department, College, Class, Subject, Exam, ExamSubjectMap, Student } from '@/types'
 import { redirect } from 'next/navigation'
 import { SignJWT, jwtVerify, decodeJwt } from 'jose'
@@ -18,8 +18,8 @@ import { revalidatePath } from 'next/cache';
 import { getUserFromCookies } from './auth-utils';
 import { format } from 'date-fns';
 
-
-const MOCK_JWT_SECRET = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long-for-app';
+const MOCK_JWT_SECRET_KEY = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long-for-app';
+const MOCK_AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
 
 const mockUsersDb: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { id: string, email: string, passwordSimple: string, college_id?: number }> = {
   'admin@example.com': { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'ADMIN', passwordSimple: 'admin123' },
@@ -35,31 +35,29 @@ let mockCreatedClasses: Class[] = [];
 let mockCreatedSubjects: Subject[] = [];
 let mockCreatedExams: Exam[] = [];
 let mockExamSubjectMaps: ExamSubjectMap[] = [];
-let mockCreatedStudents: Student[] = []; // New mock store for students
+let mockCreatedStudents: Student[] = [];
 
 
-async function createMockToken(userPayload: {
-  user_id: number; // Changed from string to number to match JWT expectation
+async function createMockJwtToken(payload: {
+  user_id: number;
   role: UserRole;
   name: string | null;
   email: string | null;
   college_id?: number;
 }): Promise<string> {
-  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
-  const secret = new TextEncoder().encode(MOCK_JWT_SECRET);
+  const secret = new TextEncoder().encode(MOCK_JWT_SECRET_KEY);
   const alg = 'HS256';
 
-  return await new SignJWT(userPayload)
+  return await new SignJWT(payload)
     .setProtectedHeader({ alg })
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime('7d') // Expires in 7 days
     .sign(secret);
 }
 
 export async function loginUser(
   values: LoginFormValues
 ): Promise<{ success: boolean; error?: string; user?: User }> {
-  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
   const validatedFields = loginSchema.safeParse(values);
 
   if (!validatedFields.success) {
@@ -70,12 +68,12 @@ export async function loginUser(
 
   let userToAuthData: (Omit<User, 'id' | 'email' | 'college_id'> & { id: string; email: string; passwordSimple: string; college_id?: number }) | null = null;
 
-  // Check in mockUsersDb first
+  // Check in predefined mockUsersDb
   const specificMockUser = mockUsersDb[email];
   if (specificMockUser && specificMockUser.passwordSimple === password) {
     userToAuthData = specificMockUser;
   } else {
-    // Check in mockCreatedUsers if not found in mockUsersDb
+    // Check in dynamically created mock users (if any)
     const createdUser = mockCreatedUsers.find(u => u.email === email && u.password === password);
     if (createdUser) {
       userToAuthData = {
@@ -83,16 +81,17 @@ export async function loginUser(
         name: createdUser.name,
         email: createdUser.email,
         role: createdUser.role,
-        passwordSimple: createdUser.password,
+        passwordSimple: createdUser.password, // For consistency, though not used for auth beyond this point
         college_id: createdUser.college_id,
       };
     }
   }
   
   // Generic fallback for any unlisted email with 'password', 'admin123' or 'Test@123'
+  // (Mainly for testing/demo convenience if a user isn't in the specific lists)
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
     userToAuthData = {
-      id: String(Date.now()), 
+      id: String(Date.now()), // A pseudo-unique ID for this mock user
       name: `User ${email.split('@')[0]}`,
       email: email,
       role: 'STUDENT', // Default role for generic fallback
@@ -100,6 +99,7 @@ export async function loginUser(
       college_id: 1, // Default college_id for generic fallback
     };
   }
+
 
   if (userToAuthData) {
     const jwtPayload = {
@@ -111,13 +111,13 @@ export async function loginUser(
     };
 
     try {
-      const token = await createMockToken(jwtPayload);
-      cookies().set(AUTH_COOKIE_NAME, token, {
+      const token = await createMockJwtToken(jwtPayload);
+      cookies().set(MOCK_AUTH_COOKIE_NAME, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         path: '/',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7,
+        maxAge: 60 * 60 * 24 * 7, // 7 days
       });
       return {
         success: true, user: {
@@ -139,9 +139,7 @@ export async function loginUser(
 
 
 export async function logoutUser() {
-  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
-  const cookieStore = cookies()
-  cookieStore.delete(AUTH_COOKIE_NAME, { path: '/' }); // Use delete for clarity
+  cookies().delete(MOCK_AUTH_COOKIE_NAME, { path: '/' });
   redirect('/login');
 }
 
@@ -291,8 +289,8 @@ export async function createSubject(
   await new Promise(resolve => setTimeout(resolve, 500));
 
   const user = await getUserFromCookies(cookies());
-  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
-    return { success: false, error: 'Unauthorized: Only College Admins can create subjects, or college ID is missing.' };
+  if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins or Teachers can create subjects, or college ID is missing.' };
   }
 
   const validatedFields = createSubjectSchema.safeParse(values);
@@ -329,8 +327,8 @@ export async function createExam(
   await new Promise(resolve => setTimeout(resolve, 500));
 
   const user = await getUserFromCookies(cookies());
-  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
-    return { success: false, error: 'Unauthorized: Only College Admins can create exams, or college ID is missing.' };
+  if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins or Teachers can create exams, or college ID is missing.' };
   }
   
   const newExam: Exam = {
@@ -357,8 +355,8 @@ export async function assignSubjectsToExam(
   await new Promise(resolve => setTimeout(resolve, 500));
 
   const user = await getUserFromCookies(cookies());
-  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
-    return { success: false, error: 'Unauthorized: Only College Admins can assign subjects, or college ID is missing.' };
+  if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins or Teachers can assign subjects, or college ID is missing.' };
   }
 
   const validatedFields = assignSubjectsToExamSchema.safeParse(values);
@@ -422,8 +420,8 @@ export async function createStudent(
   await new Promise(resolve => setTimeout(resolve, 500));
 
   const user = await getUserFromCookies(cookies());
-  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
-    return { success: false, error: 'Unauthorized: Only College Admins can add students, or college ID is missing.' };
+  if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins or Teachers can add students, or college ID is missing.' };
   }
 
   // Validate input using Zod schema
@@ -444,7 +442,7 @@ export async function createStudent(
   mockCreatedStudents.push(newStudent);
   console.log(`Mock Creating student "${newStudent.full_name}" for class ID ${newStudent.class_id} in college ID ${user.college_id}:`, newStudent);
 
-  revalidatePath('/college-admin/students'); // Revalidate to reflect changes if list was dynamic
+  revalidatePath('/college-admin/students'); 
 
   return {
     success: true,

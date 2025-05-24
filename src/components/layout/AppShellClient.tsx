@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -66,9 +67,9 @@ const getNavigationItems = (role: UserRole): NavItem[] => {
     // College Admin
     { title: 'Manage Departments', href: '/college-admin/departments', icon: Building, roles: ['COLLEGE_ADMIN'] },
     { title: 'Manage Classes', href: '/college-admin/classes', icon: Library, roles: ['COLLEGE_ADMIN'] },
-    { title: 'Manage Students', href: '/college-admin/students', icon: GraduationCap, roles: ['COLLEGE_ADMIN'] },
-    { title: 'Manage Subjects', href: '/college-admin/subjects', icon: BookCopy, roles: ['COLLEGE_ADMIN'] },
-    { title: 'Manage Exams', href: '/college-admin/exams', icon: Newspaper, roles: ['COLLEGE_ADMIN'] },
+    { title: 'Manage Students', href: '/college-admin/students', icon: GraduationCap, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
+    { title: 'Manage Subjects', href: '/college-admin/subjects', icon: BookCopy, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
+    { title: 'Manage Exams', href: '/college-admin/exams', icon: Newspaper, roles: ['COLLEGE_ADMIN', 'TEACHER'] },
     { title: 'Enter Results', href: '/college-admin/results', icon: ClipboardList, roles: ['COLLEGE_ADMIN'] },
     // Teacher
     { title: 'Enter Attendance', href: '/teacher/attendance', icon: ClipboardCheck, roles: ['TEACHER'] },
