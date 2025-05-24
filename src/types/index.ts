@@ -72,3 +72,19 @@ export interface ExamSubjectMap {
   subject_id: number;
   college_id: number; // college_id for context, same as exam's college_id
 }
+
+export interface Student {
+  student_id: number;
+  class_id: number;
+  college_id: number;
+  roll_number: string;
+  full_name: string;
+  dob: string; // YYYY-MM-DD
+  gender: "Male" | "Female" | "Other";
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  admission_date: string; // YYYY-MM-DD
+  // For display purposes, if needed when fetching student lists:
+  class_name?: string; 
+}

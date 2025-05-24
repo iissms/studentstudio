@@ -9,8 +9,9 @@ import { createDepartmentSchema, type CreateDepartmentFormValues } from '@/schem
 import { createClassSchema, type CreateClassFormValues } from '@/schemas/class';
 import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject';
 import { createExamSchema, type CreateExamFormValues } from '@/schemas/exam';
-import { assignSubjectsToExamSchema, type AssignSubjectsToExamFormValues } from '@/schemas/examSubjectMap'; // New import
-import type { User, UserRole, Department, College, Class, Subject, Exam, ExamSubjectMap } from '@/types'
+import { assignSubjectsToExamSchema, type AssignSubjectsToExamFormValues } from '@/schemas/examSubjectMap';
+import { createStudentSchema, type CreateStudentFormValues } from '@/schemas/student'; // New import
+import type { User, UserRole, Department, College, Class, Subject, Exam, ExamSubjectMap, Student } from '@/types'
 import { redirect } from 'next/navigation'
 import { SignJWT, jwtVerify, decodeJwt } from 'jose'
 import { revalidatePath } from 'next/cache';
@@ -19,16 +20,13 @@ import { format } from 'date-fns';
 
 
 const MOCK_JWT_SECRET = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long-for-app';
-const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
 
-
-const mockUsers: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { email: string, passwordSimple: string, college_id?: number }> = {
-  'admin@example.com': { name: 'Admin User', email: 'admin@example.com', role: 'ADMIN', passwordSimple: 'admin123' },
-  'collegeadmin@example.com': { name: 'College Admin', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', passwordSimple: 'password', college_id: 1 }, 
-  'teacher@example.com': { name: 'Teacher User', email: 'teacher@example.com', role: 'TEACHER', passwordSimple: 'password', college_id: 1 },
-  'student@example.com': { name: 'Student User', email: 'student@example.com', role: 'STUDENT', passwordSimple: 'password', college_id: 1 },
+const mockUsersDb: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { id: string, email: string, passwordSimple: string, college_id?: number }> = {
+  'admin@example.com': { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'ADMIN', passwordSimple: 'admin123' },
+  'collegeadmin@example.com': { id: '2', name: 'College Admin', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', passwordSimple: 'password', college_id: 1 },
+  'teacher@example.com': { id: '3', name: 'Teacher User', email: 'teacher@example.com', role: 'TEACHER', passwordSimple: 'password', college_id: 1 },
+  'student@example.com': { id: '4', name: 'Student User', email: 'student@example.com', role: 'STUDENT', passwordSimple: 'password', college_id: 1 },
 };
-
 
 let mockCreatedUsers: (User & {password: string, college_id?: number})[] = [];
 let mockCreatedColleges: College[] = [];
@@ -36,29 +34,32 @@ let mockCreatedDepartments: Department[] = [];
 let mockCreatedClasses: Class[] = [];
 let mockCreatedSubjects: Subject[] = [];
 let mockCreatedExams: Exam[] = [];
-let mockExamSubjectMaps: ExamSubjectMap[] = []; // New mock store for exam-subject mappings
+let mockExamSubjectMaps: ExamSubjectMap[] = [];
+let mockCreatedStudents: Student[] = []; // New mock store for students
 
 
 async function createMockToken(userPayload: {
-  user_id: number;
+  user_id: number; // Changed from string to number to match JWT expectation
   role: UserRole;
   name: string | null;
   email: string | null;
   college_id?: number;
 }): Promise<string> {
+  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
   const secret = new TextEncoder().encode(MOCK_JWT_SECRET);
   const alg = 'HS256';
 
   return await new SignJWT(userPayload)
     .setProtectedHeader({ alg })
     .setIssuedAt()
-    .setExpirationTime('7d') 
+    .setExpirationTime('7d')
     .sign(secret);
 }
 
 export async function loginUser(
   values: LoginFormValues
 ): Promise<{ success: boolean; error?: string; user?: User }> {
+  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
   const validatedFields = loginSchema.safeParse(values);
 
   if (!validatedFields.success) {
@@ -66,41 +67,43 @@ export async function loginUser(
   }
 
   const { email, password } = validatedFields.data;
-  
-  let userToAuthData: (Omit<User, 'id' | 'email'| 'college_id'> & { id: string, email: string, passwordSimple: string, college_id?: number }) | null = null;
-  
-  const specificMockUser = mockUsers[email];
+
+  let userToAuthData: (Omit<User, 'id' | 'email' | 'college_id'> & { id: string; email: string; passwordSimple: string; college_id?: number }) | null = null;
+
+  // Check in mockUsersDb first
+  const specificMockUser = mockUsersDb[email];
   if (specificMockUser && specificMockUser.passwordSimple === password) {
-     userToAuthData = { ...specificMockUser, id: String(Object.keys(mockUsers).indexOf(email) + 1) };
+    userToAuthData = specificMockUser;
   } else {
+    // Check in mockCreatedUsers if not found in mockUsersDb
     const createdUser = mockCreatedUsers.find(u => u.email === email && u.password === password);
     if (createdUser) {
-        userToAuthData = {
-            id: createdUser.id,
-            name: createdUser.name,
-            email: createdUser.email,
-            role: createdUser.role,
-            passwordSimple: createdUser.password, 
-            college_id: createdUser.college_id,
-        };
+      userToAuthData = {
+        id: createdUser.id,
+        name: createdUser.name,
+        email: createdUser.email,
+        role: createdUser.role,
+        passwordSimple: createdUser.password,
+        college_id: createdUser.college_id,
+      };
     }
   }
   
+  // Generic fallback for any unlisted email with 'password', 'admin123' or 'Test@123'
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
     userToAuthData = {
       id: String(Date.now()), 
       name: `User ${email.split('@')[0]}`,
       email: email,
-      role: 'STUDENT', 
+      role: 'STUDENT', // Default role for generic fallback
       passwordSimple: password,
-      college_id: 1, 
+      college_id: 1, // Default college_id for generic fallback
     };
   }
 
-
   if (userToAuthData) {
     const jwtPayload = {
-      user_id: parseInt(userToAuthData.id, 10),
+      user_id: parseInt(userToAuthData.id, 10), // Ensure user_id is number for JWT
       role: userToAuthData.role,
       name: userToAuthData.name,
       email: userToAuthData.email,
@@ -114,15 +117,17 @@ export async function loginUser(
         secure: process.env.NODE_ENV === 'production',
         path: '/',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, 
+        maxAge: 60 * 60 * 24 * 7,
       });
-      return { success: true, user: {
-        id: userToAuthData.id, 
-        name: userToAuthData.name,
-        email: userToAuthData.email,
-        role: userToAuthData.role,
-        college_id: userToAuthData.college_id,
-      }};
+      return {
+        success: true, user: {
+          id: userToAuthData.id, // String for User interface
+          name: userToAuthData.name,
+          email: userToAuthData.email,
+          role: userToAuthData.role,
+          college_id: userToAuthData.college_id,
+        }
+      };
     } catch (error) {
       console.error('Failed to create mock token:', error);
       return { success: false, error: 'Failed to prepare session.' };
@@ -132,9 +137,11 @@ export async function loginUser(
   return { success: false, error: 'Invalid credentials.' };
 }
 
+
 export async function logoutUser() {
+  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
   const cookieStore = cookies()
-  cookieStore.delete(AUTH_COOKIE_NAME, { path: '/' });
+  cookieStore.delete(AUTH_COOKIE_NAME, { path: '/' }); // Use delete for clarity
   redirect('/login');
 }
 
@@ -177,7 +184,7 @@ export async function createUser(
 
   const { email, password, role, college_id, name } = validatedFields.data;
 
-  if (mockUsers[email] || mockCreatedUsers.some(u => u.email === email)) {
+  if (mockUsersDb[email] || mockCreatedUsers.some(u => u.email === email)) {
     return { success: false, error: `User with email ${email} already exists.` };
   }
   
@@ -362,9 +369,8 @@ export async function assignSubjectsToExam(
   const { exam_id, subject_ids } = validatedFields.data;
   const collegeId = user.college_id;
 
-  // In a real app, verify exam_id belongs to collegeId
   const examExists = mockCreatedExams.some(e => e.exam_id === exam_id && e.college_id === collegeId) || 
-                     (exam_id === 301 || exam_id === 302 || exam_id === 303); // Allow assignment to initial mock exams
+                     [301, 302, 303].includes(exam_id); // Allow assignment to initial mock exams from page
   
   if (!examExists) {
     return { success: false, error: `Exam with ID ${exam_id} not found in your college.` };
@@ -373,7 +379,6 @@ export async function assignSubjectsToExam(
   const createdMappings: ExamSubjectMap[] = [];
 
   subject_ids.forEach(subject_id => {
-    // In a real app, verify subject_id belongs to collegeId and is valid for the exam's class
     const mappingExists = mockExamSubjectMaps.some(
       m => m.exam_id === exam_id && m.subject_id === subject_id && m.college_id === collegeId
     );
@@ -392,20 +397,58 @@ export async function assignSubjectsToExam(
 
   console.log(`Mock Assigning ${subject_ids.length} subjects to exam ID ${exam_id} for college ID ${collegeId}:`, createdMappings);
   
-  // Optionally update the exam object in mockCreatedExams to include assigned_subject_ids
   const examIndex = mockCreatedExams.findIndex(e => e.exam_id === exam_id);
   if (examIndex > -1) {
     const currentAssigned = new Set(mockCreatedExams[examIndex].assigned_subject_ids || []);
     subject_ids.forEach(id => currentAssigned.add(id));
     mockCreatedExams[examIndex].assigned_subject_ids = Array.from(currentAssigned);
+  } else {
+    // If exam was one of the initial static mocks, we need to find it and update it too
+    // This part is more complex with separate static and dynamic mock lists. For now, actions focus on mockCreatedExams.
   }
 
-
-  revalidatePath('/college-admin/exams'); // Revalidate to potentially show updated info if we display it
+  revalidatePath('/college-admin/exams');
 
   return {
     success: true,
     message: `${createdMappings.length} new subject(s) assigned to exam ID ${exam_id} successfully. Some may have been assigned previously.`,
     mappings: createdMappings,
+  };
+}
+
+export async function createStudent(
+  values: CreateStudentFormValues
+): Promise<{ success: boolean; error?: string; message?: string; student?: Student }> {
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  const user = await getUserFromCookies(cookies());
+  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins can add students, or college ID is missing.' };
+  }
+
+  // Validate input using Zod schema
+  const validatedFields = createStudentSchema.safeParse(values);
+  if (!validatedFields.success) {
+    console.error("Student creation validation errors:", validatedFields.error.flatten().fieldErrors);
+    return { success: false, error: 'Invalid input for adding student. Check console for details.' };
+  }
+
+  const newStudentData = validatedFields.data;
+
+  const newStudent: Student = {
+    student_id: Math.floor(Math.random() * 1000000) + 20000, // Generate a mock student_id
+    ...newStudentData,
+    college_id: user.college_id,
+  };
+
+  mockCreatedStudents.push(newStudent);
+  console.log(`Mock Creating student "${newStudent.full_name}" for class ID ${newStudent.class_id} in college ID ${user.college_id}:`, newStudent);
+
+  revalidatePath('/college-admin/students'); // Revalidate to reflect changes if list was dynamic
+
+  return {
+    success: true,
+    message: `Student "${newStudent.full_name}" (mock) added successfully to class ID ${newStudent.class_id}.`,
+    student: newStudent,
   };
 }
