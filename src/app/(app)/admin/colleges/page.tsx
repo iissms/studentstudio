@@ -5,9 +5,12 @@ import * as React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, Pencil } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { CreateCollegeForm } from '@/components/admin/CreateCollegeForm';
-import { EditCollegeForm } from '@/components/admin/EditCollegeForm'; // Import the new Edit form
+import { EditCollegeForm } from '@/components/admin/EditCollegeForm';
+import { deleteCollege } from '@/lib/actions'; // Import delete action
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface College {
   college_id: number;
@@ -18,9 +21,8 @@ interface College {
 }
 
 // Keep mock fetch function for now.
-// Note: This mock function will not be updated by the createCollege or updateCollege actions.
-// The list will only show these initial mock colleges, and updates to them won't be reflected here
-// unless this function is made to read from a mutable, shared source.
+// Note: This mock function will not be updated by the createCollege, updateCollege, or deleteCollege actions.
+// The list will only show these initial mock colleges.
 async function getColleges(): Promise<College[]> {
   await new Promise(resolve => setTimeout(resolve, 500));
   return [
@@ -33,37 +35,71 @@ async function getColleges(): Promise<College[]> {
 
 
 export default function ManageCollegesPage() {
+  const { toast } = useToast();
   const [colleges, setColleges] = React.useState<College[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [currentCollegeToEdit, setCurrentCollegeToEdit] = React.useState<College | null>(null);
+  const [collegeToDelete, setCollegeToDelete] = React.useState<College | null>(null);
+
+  async function loadColleges() {
+    setIsLoading(true);
+    const fetchedColleges = await getColleges();
+    setColleges(fetchedColleges);
+    setIsLoading(false);
+  }
 
   React.useEffect(() => {
-    async function loadColleges() {
-      setIsLoading(true);
-      const fetchedColleges = await getColleges();
-      setColleges(fetchedColleges);
-      setIsLoading(false);
-    }
     loadColleges();
   }, []);
 
   const handleCollegeCreated = () => {
     // console.log("College created, ideally re-fetch or update list.");
-    // To see newly created colleges, getColleges() would need to be dynamic.
-    // Or, for a true SPA feel, optimistically update `colleges` state here.
+    // To see newly created colleges, getColleges() would need to be dynamic or loadColleges() would need to fetch from actions.ts's mock DB
     // For now, we rely on revalidatePath in the action, but getColleges() is static.
+    // loadColleges(); // This would only show initial static list
   };
 
   const handleCollegeUpdated = () => {
     // console.log("College updated, ideally re-fetch or update list.");
-    // Similar to creation, getColleges() needs to be dynamic or list updated optimistically.
+    // loadColleges(); // This would only show initial static list
+  };
+  
+  const handleCollegeDeleted = (deletedCollegeId: number) => {
+    // Optimistically update UI or re-fetch.
+    // setColleges(prev => prev.filter(c => c.college_id !== deletedCollegeId));
+    // For now, with static getColleges(), we cannot truly reflect this in the list without a page reload
+    // or making getColleges() dynamic.
+    // loadColleges(); // This would only show initial static list
+    toast({ title: "College Deleted", description: "The college has been marked for deletion (mock)." });
   };
 
   const openEditDialog = (college: College) => {
     setCurrentCollegeToEdit(college);
     setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (college: College) => {
+    setCollegeToDelete(college);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!collegeToDelete) return;
+    const result = await deleteCollege(collegeToDelete.college_id);
+    if (result.success) {
+      handleCollegeDeleted(collegeToDelete.college_id);
+    } else {
+      toast({
+        title: "Deletion Failed",
+        description: result.error || "Could not delete the college.",
+        variant: "destructive",
+      });
+    }
+    setIsDeleteDialogOpen(false);
+    setCollegeToDelete(null);
   };
 
   return (
@@ -72,7 +108,7 @@ export default function ManageCollegesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Manage Colleges</h1>
           <p className="text-muted-foreground">
-            View, create, and manage colleges in the system.
+            View, create, edit, and delete colleges in the system.
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -118,10 +154,16 @@ export default function ManageCollegesPage() {
                         <p className="text-sm text-muted-foreground">Phone: {college.phone}</p>
                       )}
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(college)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => openEditDialog(college)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(college)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -148,6 +190,27 @@ export default function ManageCollegesPage() {
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {collegeToDelete && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the college
+                "{collegeToDelete.name}" (ID: {collegeToDelete.college_id}) and all associated data.
+                (Note: In this mock version, deletion primarily affects dynamically created colleges.)
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setCollegeToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>
+                Yes, delete college
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

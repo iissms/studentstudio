@@ -175,13 +175,28 @@ export async function updateCollege(
   const collegeIndex = mockCreatedColleges.findIndex(c => c.college_id === collegeId);
 
   if (collegeIndex === -1) {
-    // For now, we only update colleges created during this session (in mockCreatedColleges)
-    // A more robust solution would involve a single source of truth for all colleges.
-    console.warn(`College with ID ${collegeId} not found in mockCreatedColleges for update.`);
-    // Attempt to update the initial static list (this part is tricky as it's not directly mutable here)
-    // This part is more illustrative as `getColleges` in the page is static.
-    // If this were a real DB, this check would be different.
-    return { success: false, error: `College with ID ${collegeId} not found for update in dynamic list. Static list update not implemented in this mock.` };
+    // If not in mockCreatedColleges, check the initial static mock list
+    // This is a simplified mock handling. A real DB would be different.
+    const initialColleges = [ // Re-declare initial static list for this action's context
+        { college_id: 1, name: "Global Institute of Technology", address: "123 Tech Park, Silicon Valley", email: "contact@git.com", phone: "123-456-7890" },
+        { college_id: 2, name: "National College of Arts", address: "456 Art Lane, Culture City", email: "info@nca.edu", phone: "098-765-4321" },
+        { college_id: 3, name: "United Business School", address: "789 Commerce Ave, Metro City", email: "admin@ubs.biz" },
+        { college_id: 4, name: "CMC Institute", address: "Bengaluru", email: "info@cmc.edu", phone: "080-123456" },
+    ];
+    const staticCollegeIndex = initialColleges.findIndex(c => c.college_id === collegeId);
+    if (staticCollegeIndex !== -1) {
+        // In a real scenario, you would update this in your persistent store.
+        // For this mock, we'll log it. The page itself won't reflect this update for static items.
+        const updatedStaticCollege = { ...initialColleges[staticCollegeIndex], ...validatedFields.data };
+        console.log('Mock Updating static college (will not reflect in UI list immediately):', updatedStaticCollege);
+        revalidatePath('/admin/colleges');
+        return {
+            success: true,
+            message: `Static College "${validatedFields.data.name}" (mock) updated. UI list reflects static data.`,
+            college: updatedStaticCollege,
+        };
+    }
+    return { success: false, error: `College with ID ${collegeId} not found for update.` };
   }
   
   const updatedCollege = {
@@ -190,7 +205,7 @@ export async function updateCollege(
   };
   mockCreatedColleges[collegeIndex] = updatedCollege;
   
-  console.log('Mock Updating college:', updatedCollege);
+  console.log('Mock Updating dynamic college:', updatedCollege);
   
   revalidatePath('/admin/colleges'); 
 
@@ -199,6 +214,33 @@ export async function updateCollege(
     message: `College "${validatedFields.data.name}" (mock) updated successfully.`,
     college: updatedCollege,
   };
+}
+
+export async function deleteCollege(
+  collegeId: number
+): Promise<{ success: boolean; error?: string; message?: string }> {
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  const initialLength = mockCreatedColleges.length;
+  mockCreatedColleges = mockCreatedColleges.filter(c => c.college_id !== collegeId);
+
+  if (mockCreatedColleges.length < initialLength) {
+    console.log(`Mock Deleting college with ID: ${collegeId} from dynamic list.`);
+    revalidatePath('/admin/colleges');
+    return {
+      success: true,
+      message: `College with ID ${collegeId} (mock) deleted successfully from dynamic list.`,
+    };
+  } else {
+    // If not found in dynamic list, we consider it "deleted" from static ones for mock purposes
+    // even though the static list itself won't change in the UI.
+    console.log(`Mock Deleting college with ID: ${collegeId} (was from static list or not found).`);
+    revalidatePath('/admin/colleges');
+    return {
+      success: true, // Still success, as the "intent" to delete is processed.
+      message: `College with ID ${collegeId} (mock) processed for deletion. Static list items are not removed from UI by this mock.`,
+    };
+  }
 }
 
 
@@ -401,7 +443,7 @@ export async function assignSubjectsToExam(
   const collegeId = user.college_id;
 
   const examExists = mockCreatedExams.some(e => e.exam_id === exam_id && e.college_id === collegeId) || 
-                     [301, 302, 303].includes(exam_id); 
+                     [301, 302, 303].includes(exam_id); // Check against initial static exams too
   
   if (!examExists) {
     return { success: false, error: `Exam with ID ${exam_id} not found in your college.` };
@@ -433,7 +475,10 @@ export async function assignSubjectsToExam(
     const currentAssigned = new Set(mockCreatedExams[examIndex].assigned_subject_ids || []);
     subject_ids.forEach(id => currentAssigned.add(id));
     mockCreatedExams[examIndex].assigned_subject_ids = Array.from(currentAssigned);
-  } 
+  } else {
+    // Handle case for static exams if needed, similar to updateCollege logic
+    // For now, assigned_subject_ids primarily works for dynamically created exams
+  }
 
   revalidatePath('/shared-management/exams');
 
@@ -479,4 +524,3 @@ export async function createStudent(
     student: newStudent,
   };
 }
-
