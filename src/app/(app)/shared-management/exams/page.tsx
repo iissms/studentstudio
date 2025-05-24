@@ -13,27 +13,7 @@ import { EditExamForm } from '@/components/college-admin/EditExamForm';
 import { AssignSubjectsToExamForm } from '@/components/college-admin/AssignSubjectsToExamForm'; 
 import type { Exam } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
-
-async function getMockExams(collegeId?: number): Promise<Exam[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); 
-  const mockClasses = [
-    { class_id: 101, class_name: "1st PUC Science" },
-    { class_id: 102, class_name: "2nd PUC Commerce" },
-  ];
-
-  const allExams: Exam[] = [
-    { exam_id: 301, class_id: 101, name: "Physics Midterm I", marks: 50, min_marks: 17, start_date: "2024-08-15", end_date: "2024-08-15", college_id: 1, assigned_subject_ids: [201, 205] },
-    { exam_id: 302, class_id: 102, name: "Accountancy Unit Test 1", marks: 25, min_marks: 9, start_date: "2024-09-01", end_date: "2024-09-01", college_id: 1, assigned_subject_ids: [206] },
-    { exam_id: 303, class_id: 101, name: "Chemistry Final Practical", marks: 30, min_marks: 10, start_date: "2025-03-10", end_date: "2025-03-12", college_id: 1 },
-  ];
-  
-  return allExams
-    .filter(e => collegeId ? e.college_id === collegeId : true)
-    .map(e => ({
-      ...e,
-      class_name: mockClasses.find(c => c.class_id === e.class_id)?.class_name || "Unknown Class"
-    }));
-}
+import { fetchExamsForCollegeAdmin } from '@/lib/actions'; // Updated import
 
 
 export default function ManageExamsPage() {
@@ -48,32 +28,34 @@ export default function ManageExamsPage() {
   const [currentExamToEdit, setCurrentExamToEdit] = React.useState<Exam | null>(null);
   const [examToDelete, setExamToDelete] = React.useState<Exam | null>(null);
 
-  const collegeAdminCollegeId = 1; 
-
   async function loadExams() {
     setIsLoading(true);
-    const fetchedExams = await getMockExams(collegeAdminCollegeId);
-    setExams(fetchedExams);
-    setIsLoading(false);
+    try {
+      const fetchedExams = await fetchExamsForCollegeAdmin(); // Use new fetch action
+      setExams(fetchedExams);
+    } catch (error) {
+      console.error("Failed to fetch exams:", error);
+      toast({ title: "Error", description: "Could not load exams.", variant: "destructive"});
+      setExams([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   React.useEffect(() => {
     loadExams();
-  }, [collegeAdminCollegeId]);
+  }, []);
 
   const handleExamCreated = () => {
-    console.log("Exam created, ideally re-fetch or update list.");
-    // loadExams();
+    loadExams();
   };
 
   const handleExamUpdated = () => {
-    console.log("Exam updated, ideally re-fetch or update list.");
-    // loadExams();
+    loadExams();
   };
 
   const handleSubjectsAssigned = () => {
-    console.log("Subjects assigned to exam, ideally re-fetch or update exam details.");
-    // loadExams(); 
+    loadExams(); 
   }
 
   const openAssignSubjectsDialog = (exam: Exam) => {
@@ -104,6 +86,7 @@ export default function ManageExamsPage() {
     toast({ title: "Mock Deletion", description: `Exam "${examToDelete.name}" would be deleted.` });
     setIsDeleteDialogOpen(false);
     setExamToDelete(null);
+    loadExams(); // Refresh list
   };
 
   return (
@@ -138,7 +121,7 @@ export default function ManageExamsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Exam List</CardTitle>
-          <CardDescription>A list of exams in your college. (Static Mock Data)</CardDescription>
+          <CardDescription>A list of exams in your college.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -153,13 +136,13 @@ export default function ManageExamsPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-semibold">{exam.name}</h3>
-                      <p className="text-sm text-muted-foreground">ID: {exam.exam_id} | Class: {exam.class_name} (ID: {exam.class_id})</p>
+                      <p className="text-sm text-muted-foreground">ID: {exam.exam_id} | Class: {exam.class_name || exam.class_id}</p>
                       <p className="text-sm text-muted-foreground">Marks: {exam.marks} | Min. Passing: {exam.min_marks}</p>
                       <p className="text-sm text-muted-foreground">
                         Dates: {format(new Date(exam.start_date), "MMM dd, yyyy")} - {format(new Date(exam.end_date), "MMM dd, yyyy")}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Assigned Subjects: {exam.assigned_subject_ids?.join(', ') || 'None'}
+                        Assigned Subjects IDs: {exam.assigned_subject_ids?.join(', ') || 'None'}
                       </p>
                     </div>
                     <div className="flex flex-col space-y-2 items-end">

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { createUserSchema, type CreateUserFormValues } from '@/schemas/user';
-import { createUser } from '@/lib/actions';
+import { createUser, fetchColleges } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -28,18 +28,7 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from '@/components/ui/dialog';
 import type { College } from '@/types';
-
-// Mock function to fetch colleges for the dropdown
-// In a real app, this might be a prop or a call to a shared data-fetching hook/action
-async function getMockColleges(): Promise<College[]> {
-  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-  return [
-    { college_id: 1, name: "Global Institute of Technology", address: "123 Tech Park", email: "contact@git.com" },
-    { college_id: 2, name: "National College of Arts", address: "456 Art Lane", email: "info@nca.edu" },
-    { college_id: 3, name: "United Business School", address: "789 Commerce Ave", email: "admin@ubs.biz" },
-    { college_id: 4, name: "CMC Institute", address: "Bengaluru", email: "info@cmc.edu" },
-  ];
-}
+import { z } from 'zod';
 
 interface CreateUserFormProps {
   onSuccess?: () => void;
@@ -53,14 +42,21 @@ export function CreateUserForm({ onSuccess, setDialogOpen }: CreateUserFormProps
   const [isCollegesLoading, setIsCollegesLoading] = React.useState(true);
 
   React.useEffect(() => {
-    async function loadColleges() {
+    async function loadCollegesForDropdown() {
       setIsCollegesLoading(true);
-      const fetchedColleges = await getMockColleges();
-      setColleges(fetchedColleges);
-      setIsCollegesLoading(false);
+      try {
+        const fetchedColleges = await fetchColleges(); // Use the new fetch action
+        setColleges(fetchedColleges);
+      } catch (error) {
+        console.error("Failed to fetch colleges for dropdown:", error);
+        toast({ title: "Error", description: "Could not load colleges.", variant: "destructive"});
+        setColleges([]);
+      } finally {
+        setIsCollegesLoading(false);
+      }
     }
-    loadColleges();
-  }, []);
+    loadCollegesForDropdown();
+  }, [toast]);
 
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserSchema),
@@ -68,7 +64,7 @@ export function CreateUserForm({ onSuccess, setDialogOpen }: CreateUserFormProps
       email: '',
       password: '',
       role: 'COLLEGE_ADMIN',
-      college_id: undefined, // Initially no college selected
+      college_id: undefined, 
       name: '',
     },
   });
@@ -76,7 +72,6 @@ export function CreateUserForm({ onSuccess, setDialogOpen }: CreateUserFormProps
   async function onSubmit(values: CreateUserFormValues) {
     setIsLoading(true);
     try {
-      // Ensure role is explicitly set if not part of form inputs that user can change
       const payload = { ...values, role: 'COLLEGE_ADMIN' as const };
       const result = await createUser(payload);
       
@@ -173,7 +168,7 @@ export function CreateUserForm({ onSuccess, setDialogOpen }: CreateUserFormProps
               <FormLabel htmlFor="college_id">Assign to College</FormLabel>
               <Select
                 onValueChange={field.onChange}
-                defaultValue={field.value?.toString()} // Ensure defaultValue is a string if field.value is number
+                defaultValue={field.value?.toString()} 
                 disabled={isLoading || isCollegesLoading}
               >
                 <FormControl>
@@ -200,9 +195,6 @@ export function CreateUserForm({ onSuccess, setDialogOpen }: CreateUserFormProps
           )}
         />
         
-        {/* Role is fixed to COLLEGE_ADMIN and not shown in the form */}
-        {/* <FormField control={form.control} name="role" render={() => <FormItem />} /> */}
-
         <DialogFooter className="pt-4">
           <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isLoading}>
             Cancel

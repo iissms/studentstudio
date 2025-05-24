@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { createStudentSchema, type CreateStudentFormValues, type CreateStudentFormInputValues } from '@/schemas/student';
-import { createStudent } from '@/lib/actions'; // Server action
+import { createStudent, fetchClassesForCollegeAdmin } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -31,18 +31,7 @@ import { DialogFooter } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
 import type { Class } from '@/types';
 import { ScrollArea } from '../ui/scroll-area';
-
-
-// Mock function to fetch classes for the dropdown
-async function getMockClassesForCollegeAdmin(): Promise<Class[]> {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1 },
-     // Add more mock classes as needed, ensuring they'd belong to the current admin's college
-  ];
-}
+import { z } from 'zod';
 
 interface CreateStudentFormProps {
   onSuccess?: () => void;
@@ -58,12 +47,19 @@ export function CreateStudentForm({ onSuccess, setDialogOpen }: CreateStudentFor
   React.useEffect(() => {
     async function loadClasses() {
       setIsClassesLoading(true);
-      const fetchedClasses = await getMockClassesForCollegeAdmin();
-      setClasses(fetchedClasses);
-      setIsClassesLoading(false);
+      try {
+        const fetchedClasses = await fetchClassesForCollegeAdmin(); // Use new fetch action
+        setClasses(fetchedClasses);
+      } catch (error) {
+        console.error("Failed to fetch classes for student form:", error);
+        toast({ title: "Error", description: "Could not load classes for selection.", variant: "destructive"});
+        setClasses([]);
+      } finally {
+        setIsClassesLoading(false);
+      }
     }
     loadClasses();
-  }, []);
+  }, [toast]);
 
   const form = useForm<CreateStudentFormInputValues>({
     resolver: zodResolver(createStudentSchema),
@@ -76,14 +72,13 @@ export function CreateStudentForm({ onSuccess, setDialogOpen }: CreateStudentFor
       email: '',
       phone: '',
       address: '',
-      admission_date: new Date(), // Default to today
+      admission_date: new Date(), 
     },
   });
 
   async function onSubmit(values: CreateStudentFormInputValues) {
     setIsLoading(true);
     try {
-      // The resolver already transformed the values to CreateStudentFormValues (with formatted dates)
       const validatedValues = createStudentSchema.parse(values);
       const result = await createStudent(validatedValues);
 
@@ -124,7 +119,7 @@ export function CreateStudentForm({ onSuccess, setDialogOpen }: CreateStudentFor
   return (
     <Form {...form}>
        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <ScrollArea className="h-[calc(80vh-10rem)] pr-6"> {/* Adjust height as needed */}
+        <ScrollArea className="h-[calc(80vh-10rem)] pr-6"> 
         <div className="space-y-4">
             <FormField
             control={form.control}
@@ -133,7 +128,7 @@ export function CreateStudentForm({ onSuccess, setDialogOpen }: CreateStudentFor
                 <FormItem>
                 <FormLabel htmlFor="class_id">Class</FormLabel>
                 <Select
-                    onValueChange={field.onChange}
+                    onValueChange={field.onChange} // Schema handles transform
                     defaultValue={field.value}
                     disabled={isLoading || isClassesLoading}
                 >

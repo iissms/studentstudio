@@ -2,17 +2,15 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label }
-from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { assignSubjectsToExamSchema, type AssignSubjectsToExamFormValues } from '@/schemas/examSubjectMap';
-import { assignSubjectsToExam } from '@/lib/actions'; // Server action
+import { assignSubjectsToExam, fetchSubjectsForClass } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -24,30 +22,10 @@ import {
 import { DialogFooter } from '@/components/ui/dialog';
 import type { Subject, Exam } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-// Mock function to fetch subjects for a given class
-// In a real app, this would fetch from an API based on class_id and college_id
-async function getMockSubjectsForClass(classId: number, collegeId: number): Promise<Subject[]> {
-  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-  
-  // This is a simplified mock. A real backend would filter by class_id and college_id.
-  // For now, let's assume these subjects are available for class_id 101 and college_id 1
-  const allSubjects: Subject[] = [
-    { subject_id: 201, class_id: 101, subject_code: "PHY101", subject_name: "Physics", type: "Theory", college_id: 1 },
-    { subject_id: 202, class_id: 101, subject_code: "CHEM101", subject_name: "Chemistry", type: "Theory", college_id: 1 },
-    { subject_id: 203, class_id: 101, subject_code: "MATH101", subject_name: "Mathematics", type: "Theory", college_id: 1 },
-    { subject_id: 204, class_id: 101, subject_code: "BIO101", subject_name: "Biology", type: "Theory", college_id: 1 },
-    { subject_id: 205, class_id: 101, subject_code: "PHY101L", subject_name: "Physics Lab", type: "Practical", college_id: 1 },
-    { subject_id: 206, class_id: 102, subject_code: "ACC101", subject_name: "Accountancy", type: "Theory", college_id: 1 },
-    { subject_id: 207, class_id: 102, subject_code: "BUS101", subject_name: "Business Studies", type: "Theory", college_id: 1 },
-  ];
-
-  return allSubjects.filter(s => s.class_id === classId && s.college_id === collegeId);
-}
-
+import { z } from 'zod';
 
 interface AssignSubjectsToExamFormProps {
-  exam: Exam; // Pass the full exam object
+  exam: Exam; 
   onSuccess?: () => void;
   setDialogOpen: (open: boolean) => void;
 }
@@ -60,28 +38,34 @@ export function AssignSubjectsToExamForm({ exam, onSuccess, setDialogOpen }: Ass
 
   React.useEffect(() => {
     async function loadSubjects() {
-      if (exam?.class_id && exam?.college_id) {
+      if (exam?.class_id) { // college_id check happens in the action
         setIsLoadingSubjects(true);
-        const fetchedSubjects = await getMockSubjectsForClass(exam.class_id, exam.college_id);
-        setAvailableSubjects(fetchedSubjects);
-        setIsLoadingSubjects(false);
+        try {
+          const fetchedSubjects = await fetchSubjectsForClass(exam.class_id); // Use new fetch action
+          setAvailableSubjects(fetchedSubjects);
+        } catch (error) {
+          console.error("Failed to fetch subjects for exam assignment:", error);
+          toast({ title: "Error", description: "Could not load subjects for this class.", variant: "destructive"});
+          setAvailableSubjects([]);
+        } finally {
+          setIsLoadingSubjects(false);
+        }
       } else {
         setAvailableSubjects([]);
         setIsLoadingSubjects(false);
       }
     }
     loadSubjects();
-  }, [exam]);
+  }, [exam, toast]);
 
   const form = useForm<AssignSubjectsToExamFormValues>({
     resolver: zodResolver(assignSubjectsToExamSchema),
     defaultValues: {
       exam_id: exam?.exam_id,
-      subject_ids: exam?.assigned_subject_ids || [], // Pre-fill if already assigned (mocked for now)
+      subject_ids: exam?.assigned_subject_ids || [], 
     },
   });
   
-  // Watch exam_id to update defaultValues if the exam prop changes
   React.useEffect(() => {
     form.reset({
         exam_id: exam?.exam_id,
@@ -101,7 +85,6 @@ export function AssignSubjectsToExamForm({ exam, onSuccess, setDialogOpen }: Ass
         });
         onSuccess?.();
         setDialogOpen(false);
-        // form.reset(); // Resetting might clear pre-selection if dialog is reopened
       } else {
         toast({
           title: 'Assignment Failed',
@@ -109,12 +92,20 @@ export function AssignSubjectsToExamForm({ exam, onSuccess, setDialogOpen }: Ass
           variant: 'destructive',
         });
       }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred.',
-        variant: 'destructive',
-      });
+    } catch (error: any) {
+       if (error instanceof z.ZodError) {
+        toast({
+          title: 'Validation Error',
+          description: "Please check the form for errors.",
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }

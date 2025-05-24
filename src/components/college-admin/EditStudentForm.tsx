@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { createStudentSchema, type CreateStudentFormValues, type CreateStudentFormInputValues } from '@/schemas/student';
-import { updateStudent } from '@/lib/actions';
+import { updateStudent, fetchClassesForCollegeAdmin } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -31,15 +31,7 @@ import { DialogFooter } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
 import type { Student, Class } from '@/types';
 import { ScrollArea } from '../ui/scroll-area';
-
-async function getMockClassesForCollegeAdmin(): Promise<Class[]> {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1 },
-  ];
-}
+import { z } from 'zod';
 
 interface EditStudentFormProps {
   studentToEdit: Student;
@@ -56,12 +48,19 @@ export function EditStudentForm({ studentToEdit, onSuccess, setDialogOpen }: Edi
   React.useEffect(() => {
     async function loadClasses() {
       setIsClassesLoading(true);
-      const fetchedClasses = await getMockClassesForCollegeAdmin();
-      setClasses(fetchedClasses);
-      setIsClassesLoading(false);
+      try {
+        const fetchedClasses = await fetchClassesForCollegeAdmin(); // Use new fetch action
+        setClasses(fetchedClasses);
+      } catch (error) {
+        console.error("Failed to fetch classes for edit student form:", error);
+        toast({ title: "Error", description: "Could not load classes for selection.", variant: "destructive"});
+        setClasses([]);
+      } finally {
+        setIsClassesLoading(false);
+      }
     }
     loadClasses();
-  }, []);
+  }, [toast]);
 
   const form = useForm<CreateStudentFormInputValues>({
     resolver: zodResolver(createStudentSchema),
@@ -84,12 +83,12 @@ export function EditStudentForm({ studentToEdit, onSuccess, setDialogOpen }: Edi
         class_id: studentToEdit.class_id?.toString(),
         roll_number: studentToEdit.roll_number,
         full_name: studentToEdit.full_name,
-        dob: new Date(studentToEdit.dob), // Ensure dob is a Date object
+        dob: new Date(studentToEdit.dob), 
         gender: studentToEdit.gender,
         email: studentToEdit.email || '',
         phone: studentToEdit.phone || '',
         address: studentToEdit.address || '',
-        admission_date: new Date(studentToEdit.admission_date), // Ensure admission_date is a Date object
+        admission_date: new Date(studentToEdit.admission_date), 
       });
     }
   }, [studentToEdit, form]);
@@ -146,7 +145,7 @@ export function EditStudentForm({ studentToEdit, onSuccess, setDialogOpen }: Edi
                 <FormItem>
                 <FormLabel htmlFor="class_id">Class</FormLabel>
                 <Select
-                    onValueChange={field.onChange} // Handled by schema transform
+                    onValueChange={field.onChange} 
                     defaultValue={field.value}
                     disabled={isLoading || isClassesLoading}
                 >

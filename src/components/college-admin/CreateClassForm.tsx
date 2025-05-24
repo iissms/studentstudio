@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { createClassSchema, type CreateClassFormValues } from '@/schemas/class';
-import { createClass } from '@/lib/actions'; // Server action
+import { createClass, fetchDepartmentsForCollegeAdmin } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -28,20 +28,7 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from '@/components/ui/dialog';
 import type { Department } from '@/types';
-
-// Mock function to fetch departments for the dropdown, specific to College Admin's college
-// In a real app, this would fetch from an API based on the logged-in admin's college_id
-async function getMockDepartmentsForCollegeAdmin(): Promise<Department[]> {
-  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-  // This should ideally be filtered by the admin's college_id
-  return [
-    { department_id: 1, name: "Science Department", college_id: 1 },
-    { department_id: 2, name: "Humanities Department", college_id: 1 },
-    { department_id: 3, name: "Commerce Studies", college_id: 1 },
-    { department_id: 4, name: "Mathematics", college_id: 1 },
-    // Add more mock departments if needed, assuming they belong to the same college
-  ];
-}
+import { z } from 'zod';
 
 interface CreateClassFormProps {
   onSuccess?: () => void;
@@ -57,20 +44,26 @@ export function CreateClassForm({ onSuccess, setDialogOpen }: CreateClassFormPro
   React.useEffect(() => {
     async function loadDepartments() {
       setIsDepartmentsLoading(true);
-      // In a real app, pass college_id or fetch based on user session
-      const fetchedDepartments = await getMockDepartmentsForCollegeAdmin();
-      setDepartments(fetchedDepartments);
-      setIsDepartmentsLoading(false);
+      try {
+        const fetchedDepartments = await fetchDepartmentsForCollegeAdmin(); // Use new fetch action
+        setDepartments(fetchedDepartments);
+      } catch (error) {
+        console.error("Failed to fetch departments for class form:", error);
+        toast({ title: "Error", description: "Could not load departments for selection.", variant: "destructive"});
+        setDepartments([]);
+      } finally {
+        setIsDepartmentsLoading(false);
+      }
     }
     loadDepartments();
-  }, []);
+  }, [toast]);
 
   const form = useForm<CreateClassFormValues>({
     resolver: zodResolver(createClassSchema),
     defaultValues: {
       class_name: '',
       department_id: undefined,
-      academic_year: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`, // Default to current-next academic year
+      academic_year: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
     },
   });
 
@@ -132,7 +125,7 @@ export function CreateClassForm({ onSuccess, setDialogOpen }: CreateClassFormPro
             <FormItem>
               <FormLabel htmlFor="department_id">Department</FormLabel>
               <Select
-                onValueChange={field.onChange}
+                onValueChange={field.onChange} // Schema handles transform
                 defaultValue={field.value?.toString()}
                 disabled={isLoading || isDepartmentsLoading}
               >

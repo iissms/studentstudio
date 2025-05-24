@@ -6,30 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { PlusCircle, Pencil, Trash2, University } from "lucide-react"; // Added University
+import { PlusCircle, Pencil, Trash2, University } from "lucide-react";
 import { CreateCollegeForm } from '@/components/admin/CreateCollegeForm';
 import { EditCollegeForm } from '@/components/admin/EditCollegeForm';
-import { deleteCollege } from '@/lib/actions'; 
+import { deleteCollege, fetchColleges } from '@/lib/actions'; // Updated import
 import { useToast } from '@/hooks/use-toast'; 
-
-interface College {
-  college_id: number;
-  name: string;
-  address: string;
-  email?: string;
-  phone?: string;
-}
-
-async function getColleges(): Promise<College[]> {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [
-    { college_id: 1, name: "Global Institute of Technology", address: "123 Tech Park, Silicon Valley", email: "contact@git.com", phone: "123-456-7890" },
-    { college_id: 2, name: "National College of Arts", address: "456 Art Lane, Culture City", email: "info@nca.edu", phone: "098-765-4321" },
-    { college_id: 3, name: "United Business School", address: "789 Commerce Ave, Metro City", email: "admin@ubs.biz" },
-    { college_id: 4, name: "CMC Institute", address: "Bengaluru", email: "info@cmc.edu", phone: "080-123456" },
-  ];
-}
-
+import type { College } from '@/types'; // Ensure College type is imported
 
 export default function ManageCollegesPage() {
   const { toast } = useToast();
@@ -43,9 +25,16 @@ export default function ManageCollegesPage() {
 
   async function loadColleges() {
     setIsLoading(true);
-    const fetchedColleges = await getColleges();
-    setColleges(fetchedColleges);
-    setIsLoading(false);
+    try {
+      const fetchedColleges = await fetchColleges(); // Use the new fetch action
+      setColleges(fetchedColleges);
+    } catch (error) {
+      console.error("Failed to fetch colleges:", error);
+      toast({ title: "Error", description: "Could not load colleges.", variant: "destructive"});
+      setColleges([]); // Set to empty array on error
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   React.useEffect(() => {
@@ -53,15 +42,16 @@ export default function ManageCollegesPage() {
   }, []);
 
   const handleCollegeCreated = () => {
-    // loadColleges(); // This would only show initial static list
+    loadColleges(); 
   };
 
   const handleCollegeUpdated = () => {
-    // loadColleges(); // This would only show initial static list
+    loadColleges(); 
   };
   
   const handleCollegeDeleted = (deletedCollegeId: number) => {
-    toast({ title: "College Deleted", description: "The college has been marked for deletion (mock)." });
+    toast({ title: "College Processed", description: "The college has been processed for deletion." });
+    loadColleges();
   };
 
   const openEditDialog = (college: College) => {
@@ -123,7 +113,7 @@ export default function ManageCollegesPage() {
       <Card>
         <CardHeader>
           <CardTitle>College List</CardTitle>
-          <CardDescription>A list of all registered colleges. Updates to this list via forms may not reflect immediately due to mock data setup.</CardDescription>
+          <CardDescription>A list of all registered colleges.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -199,7 +189,6 @@ export default function ManageCollegesPage() {
               <AlertDialogDescription>
                 This action cannot be undone. This will permanently delete the college
                 "{collegeToDelete.name}" (ID: {collegeToDelete.college_id}) and all associated data.
-                (Note: In this mock version, deletion primarily affects dynamically created colleges.)
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

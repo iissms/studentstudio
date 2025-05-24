@@ -9,32 +9,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { BookCopy, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { CreateSubjectForm } from '@/components/college-admin/CreateSubjectForm'; 
 import { EditSubjectForm } from '@/components/college-admin/EditSubjectForm';
-import type { Subject, Class } from '@/types'; 
+import type { Subject } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
-
-async function getMockSubjects(collegeId?: number): Promise<Subject[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); 
-  
-  const mockClasses: Class[] = [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
-  ];
-
-  const allSubjects: Subject[] = [
-    { subject_id: 201, class_id: 101, subject_code: "PHY101", subject_name: "Physics", type: "Theory", college_id: 1 },
-    { subject_id: 202, class_id: 101, subject_code: "CHEM101", subject_name: "Chemistry", type: "Theory", college_id: 1 },
-    { subject_id: 203, class_id: 102, subject_code: "ACC101", subject_name: "Accountancy", type: "Theory", college_id: 1 },
-    { subject_id: 204, class_id: 101, subject_code: "PHY101L", subject_name: "Physics Lab", type: "Practical", college_id: 1 },
-  ];
-
-  return allSubjects
-    .filter(s => collegeId ? s.college_id === collegeId : true)
-    .map(s => ({
-      ...s,
-      class_name: mockClasses.find(c => c.class_id === s.class_id)?.class_name || "Unknown Class"
-    }));
-}
-
+import { fetchSubjectsForCollegeAdmin } from '@/lib/actions'; // Updated import
 
 export default function ManageSubjectsPage() {
   const { toast } = useToast();
@@ -46,27 +23,30 @@ export default function ManageSubjectsPage() {
   const [currentSubjectToEdit, setCurrentSubjectToEdit] = React.useState<Subject | null>(null);
   const [subjectToDelete, setSubjectToDelete] = React.useState<Subject | null>(null);
 
-  const collegeAdminCollegeId = 1; 
-
   async function loadSubjects() {
     setIsLoading(true);
-    const fetchedSubjects = await getMockSubjects(collegeAdminCollegeId);
-    setSubjects(fetchedSubjects);
-    setIsLoading(false);
+    try {
+      const fetchedSubjects = await fetchSubjectsForCollegeAdmin(); // Use new fetch action
+      setSubjects(fetchedSubjects);
+    } catch (error) {
+      console.error("Failed to fetch subjects:", error);
+      toast({ title: "Error", description: "Could not load subjects.", variant: "destructive"});
+      setSubjects([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   React.useEffect(() => {
     loadSubjects();
-  }, [collegeAdminCollegeId]);
+  }, []);
 
   const handleSubjectCreated = () => {
-    console.log("Subject created, ideally re-fetch or update list.");
-    // loadSubjects();
+    loadSubjects();
   };
 
   const handleSubjectUpdated = () => {
-    console.log("Subject updated, ideally re-fetch or update list.");
-    // loadSubjects();
+    loadSubjects();
   };
 
   const openEditDialog = (subject: Subject) => {
@@ -92,6 +72,7 @@ export default function ManageSubjectsPage() {
     toast({ title: "Mock Deletion", description: `Subject "${subjectToDelete.subject_name}" would be deleted.` });
     setIsDeleteDialogOpen(false);
     setSubjectToDelete(null);
+    loadSubjects(); // Refresh list
   };
 
   return (
@@ -127,7 +108,7 @@ export default function ManageSubjectsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Subject List</CardTitle>
-          <CardDescription>A list of subjects in your college. (Static Mock Data)</CardDescription>
+          <CardDescription>A list of subjects in your college.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -143,7 +124,7 @@ export default function ManageSubjectsPage() {
                     <div>
                       <h3 className="text-lg font-semibold">{sub.subject_name} ({sub.subject_code})</h3>
                       <p className="text-sm text-muted-foreground">ID: {sub.subject_id} | Type: {sub.type}</p>
-                      <p className="text-sm text-muted-foreground">Class: {sub.class_name} (ID: {sub.class_id})</p>
+                      <p className="text-sm text-muted-foreground">Class: {sub.class_name || sub.class_id}</p>
                     </div>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm" onClick={() => openEditDialog(sub)}>

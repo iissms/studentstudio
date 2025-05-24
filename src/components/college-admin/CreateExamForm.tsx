@@ -2,16 +2,15 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { createExamSchema, type CreateExamFormValues, type CreateExamFormInputValues } from '@/schemas/exam';
-import { createExam } from '@/lib/actions'; // Server action
+import { createExam, fetchClassesForCollegeAdmin } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -28,18 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogFooter } from '@/components/ui/dialog';
-import { DatePicker } from '@/components/ui/date-picker'; // New DatePicker
+import { DatePicker } from '@/components/ui/date-picker'; 
 import type { Class } from '@/types';
-
-// Mock function to fetch classes for the dropdown
-async function getMockClassesForCollegeAdmin(): Promise<Class[]> {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1 },
-  ];
-}
+import { z } from 'zod';
 
 interface CreateExamFormProps {
   onSuccess?: () => void;
@@ -55,20 +45,27 @@ export function CreateExamForm({ onSuccess, setDialogOpen }: CreateExamFormProps
   React.useEffect(() => {
     async function loadClasses() {
       setIsClassesLoading(true);
-      const fetchedClasses = await getMockClassesForCollegeAdmin();
-      setClasses(fetchedClasses);
-      setIsClassesLoading(false);
+      try {
+        const fetchedClasses = await fetchClassesForCollegeAdmin(); // Use new fetch action
+        setClasses(fetchedClasses);
+      } catch (error) {
+        console.error("Failed to fetch classes for exam form:", error);
+        toast({ title: "Error", description: "Could not load classes for selection.", variant: "destructive"});
+        setClasses([]);
+      } finally {
+        setIsClassesLoading(false);
+      }
     }
     loadClasses();
-  }, []);
+  }, [toast]);
 
   const form = useForm<CreateExamFormInputValues>({
     resolver: zodResolver(createExamSchema),
     defaultValues: {
       class_id: undefined,
       name: '',
-      marks: undefined, // Will be coerced to number
-      min_marks: undefined, // Will be coerced to number
+      marks: undefined, 
+      min_marks: undefined, 
       start_date: undefined,
       end_date: undefined,
     },
@@ -76,12 +73,7 @@ export function CreateExamForm({ onSuccess, setDialogOpen }: CreateExamFormProps
 
   async function onSubmit(values: CreateExamFormInputValues) {
     setIsLoading(true);
-
-    // The schema handles the transformation, including date formatting
-    // So we can directly pass `values` if the schema is set up for it.
-    // Ensure the schema output (CreateExamFormValues) matches action input type.
     try {
-      // The resolver already transformed the values to CreateExamFormValues (with formatted dates)
       const validatedValues = createExamSchema.parse(values);
       const result = await createExam(validatedValues);
 
@@ -129,7 +121,7 @@ export function CreateExamForm({ onSuccess, setDialogOpen }: CreateExamFormProps
             <FormItem>
               <FormLabel htmlFor="class_id">Class</FormLabel>
               <Select
-                onValueChange={field.onChange}
+                onValueChange={field.onChange} // Schema handles transform
                 defaultValue={field.value}
                 disabled={isLoading || isClassesLoading}
               >

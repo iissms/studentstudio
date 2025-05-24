@@ -31,49 +31,63 @@ const mockUsersDb: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { 
 };
 
 let mockCreatedUsers: (User & {password: string, college_id?: number})[] = [];
-let mockCreatedColleges: College[] = [];
+
+// --- Centralized Mock Data Store ---
 let mockInitialColleges: College[] = [
     { college_id: 1, name: "Global Institute of Technology", address: "123 Tech Park, Silicon Valley", email: "contact@git.com", phone: "123-456-7890" },
     { college_id: 2, name: "National College of Arts", address: "456 Art Lane, Culture City", email: "info@nca.edu", phone: "098-765-4321" },
     { college_id: 3, name: "United Business School", address: "789 Commerce Ave, Metro City", email: "admin@ubs.biz" },
     { college_id: 4, name: "CMC Institute", address: "Bengaluru", email: "info@cmc.edu", phone: "080-123456" },
-  ];
+];
+let mockCreatedColleges: College[] = [];
 
-let mockCreatedDepartments: Department[] = [];
 let mockInitialDepartments: Department[] = [
     { department_id: 1, name: "Science Department", college_id: 1 },
     { department_id: 2, name: "Humanities Department", college_id: 1 },
     { department_id: 3, name: "Commerce Studies", college_id: 1 },
+    { department_id: 5, name: "Engineering Dept", college_id: 2 },
 ];
+let mockCreatedDepartments: Department[] = [];
 
-let mockCreatedClasses: Class[] = [];
 let mockInitialClasses: Class[] = [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1, department_name: "Science Department" },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1, department_name: "Commerce Studies" },
-    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1, department_name: "Humanities Department" },
+    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
+    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
+    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1 },
+    { class_id: 104, class_name: "Mech Engg Year 1", department_id: 5, academic_year: "2024-2025", college_id: 2 },
 ];
+let mockCreatedClasses: Class[] = [];
 
-let mockCreatedSubjects: Subject[] = [];
-let mockInitialSubjects: Subject[] = [
-    { subject_id: 201, class_id: 101, subject_code: "PHY101", subject_name: "Physics", type: "Theory", college_id: 1, class_name: "1st PUC Science" },
-    { subject_id: 202, class_id: 101, subject_code: "CHEM101", subject_name: "Chemistry", type: "Theory", college_id: 1, class_name: "1st PUC Science" },
-    { subject_id: 203, class_id: 102, subject_code: "ACC101", subject_name: "Accountancy", type: "Theory", college_id: 1, class_name: "2nd PUC Commerce" },
-    { subject_id: 204, class_id: 101, subject_code: "PHY101L", subject_name: "Physics Lab", type: "Practical", college_id: 1, class_name: "1st PUC Science" },
-];
-
-let mockCreatedExams: Exam[] = [];
-let mockInitialExams: Exam[] = [
-    { exam_id: 301, class_id: 101, name: "Physics Midterm I", marks: 50, min_marks: 17, start_date: "2024-08-15", end_date: "2024-08-15", college_id: 1, assigned_subject_ids: [201, 205], class_name: "1st PUC Science" },
-    { exam_id: 302, class_id: 102, name: "Accountancy Unit Test 1", marks: 25, min_marks: 9, start_date: "2024-09-01", end_date: "2024-09-01", college_id: 1, assigned_subject_ids: [206], class_name: "2nd PUC Commerce" },
-    { exam_id: 303, class_id: 101, name: "Chemistry Final Practical", marks: 30, min_marks: 10, start_date: "2025-03-10", end_date: "2025-03-12", college_id: 1, class_name: "1st PUC Science" },
-];
-
-let mockExamSubjectMaps: ExamSubjectMap[] = [];
-let mockCreatedStudents: Student[] = [];
 let mockInitialStudents: Student[] = [
-    { student_id: 2001, class_id: 101, college_id: 1, roll_number: "SC001", full_name: "Alice Wonderland", dob: "2005-03-10", gender: "Female", email: "alice@example.com", phone: "1234567890", address: "123 Fantasy Lane", admission_date: "2023-06-01", class_name: "1st PUC Science" },
-    { student_id: 2002, class_id: 102, college_id: 1, roll_number: "CM001", full_name: "Bob The Builder", dob: "2004-07-15", gender: "Male", email: "bob@example.com", phone: "0987654321", address: "456 Tool Street", admission_date: "2022-07-01", class_name: "2nd PUC Commerce" },
+    { student_id: 2001, class_id: 101, college_id: 1, roll_number: "SC001", full_name: "Alice Wonderland", dob: "2005-03-10", gender: "Female", email: "alice@example.com", phone: "1234567890", address: "123 Fantasy Lane", admission_date: "2023-06-01"},
+    { student_id: 2002, class_id: 102, college_id: 1, roll_number: "CM001", full_name: "Bob The Builder", dob: "2004-07-15", gender: "Male", email: "bob@example.com", phone: "0987654321", address: "456 Tool Street", admission_date: "2022-07-01"},
+    { student_id: 2003, class_id: 104, college_id: 2, roll_number: "ENG001", full_name: "Charlie Brown", dob: "2005-08-20", gender: "Male", email: "charlie@example.com", phone: "555-1234", address: "789 Engineering Rd", admission_date: "2023-07-15"},
 ];
+let mockCreatedStudents: Student[] = [];
+
+let mockInitialSubjects: Subject[] = [
+    { subject_id: 201, class_id: 101, subject_code: "PHY101", subject_name: "Physics", type: "Theory", college_id: 1 },
+    { subject_id: 202, class_id: 101, subject_code: "CHEM101", subject_name: "Chemistry", type: "Theory", college_id: 1 },
+    { subject_id: 203, class_id: 102, subject_code: "ACC101", subject_name: "Accountancy", type: "Theory", college_id: 1 },
+    { subject_id: 204, class_id: 101, subject_code: "PHY101L", subject_name: "Physics Lab", type: "Practical", college_id: 1 },
+    { subject_id: 205, class_id: 104, subject_code: "MECH101", subject_name: "Mechanics", type: "Theory", college_id: 2 },
+];
+let mockCreatedSubjects: Subject[] = [];
+
+let mockInitialExams: Exam[] = [
+    { exam_id: 301, class_id: 101, name: "Physics Midterm I", marks: 50, min_marks: 17, start_date: "2024-08-15", end_date: "2024-08-15", college_id: 1, assigned_subject_ids: [201, 204] },
+    { exam_id: 302, class_id: 102, name: "Accountancy Unit Test 1", marks: 25, min_marks: 9, start_date: "2024-09-01", end_date: "2024-09-01", college_id: 1, assigned_subject_ids: [203] },
+    { exam_id: 303, class_id: 101, name: "Chemistry Final Practical", marks: 30, min_marks: 10, start_date: "2025-03-10", end_date: "2025-03-12", college_id: 1 },
+    { exam_id: 304, class_id: 104, name: "Mechanics Midterm", marks: 100, min_marks: 40, start_date: "2024-10-15", end_date: "2024-10-15", college_id: 2, assigned_subject_ids: [205] },
+];
+let mockCreatedExams: Exam[] = [];
+
+let mockExamSubjectMaps: ExamSubjectMap[] = [
+    { mapping_id: 1, exam_id: 301, subject_id: 201, college_id: 1 },
+    { mapping_id: 2, exam_id: 301, subject_id: 204, college_id: 1 },
+    { mapping_id: 3, exam_id: 302, subject_id: 203, college_id: 1 },
+    { mapping_id: 4, exam_id: 304, subject_id: 205, college_id: 2 },
+];
+// --- End Centralized Mock Data Store ---
 
 async function createMockJwtToken(payload: {
   user_id: string; 
@@ -116,15 +130,14 @@ export async function loginUser(
       }
   }
   
-  // Fallback for generic student/other user login if email is not in predefined mocks
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
     userToAuthData = {
       id: String(Date.now()), 
       name: `User ${email.split('@')[0]}`,
       email: email,
-      role: 'STUDENT', // Default to student or a generic role
+      role: 'STUDENT', 
       passwordSimple: password,
-      college_id: 1, // Default college or make it undefined
+      college_id: 1, 
     };
   }
 
@@ -169,6 +182,112 @@ export async function logoutUser() {
   redirect('/login');
 }
 
+// --- Fetch Actions (Simulating API calls) ---
+
+export async function fetchColleges(): Promise<College[]> {
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
+  return [...mockInitialColleges, ...mockCreatedColleges];
+}
+
+export async function fetchDepartmentsForCollegeAdmin(): Promise<Department[]> {
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const user = await getUserFromCookies(cookies());
+  if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+    console.warn('fetchDepartmentsForCollegeAdmin: Unauthorized or no college_id for user:', user);
+    return [];
+  }
+  const allDepartments = [...mockInitialDepartments, ...mockCreatedDepartments];
+  return allDepartments.filter(dept => dept.college_id === user.college_id);
+}
+
+export async function fetchClassesForCollegeAdmin(): Promise<Class[]> {
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const user = await getUserFromCookies(cookies());
+  if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+    console.warn('fetchClassesForCollegeAdmin: Unauthorized or no college_id for user:', user);
+    return [];
+  }
+  
+  const allDepartments = [...mockInitialDepartments, ...mockCreatedDepartments];
+  const collegeDepartments = allDepartments.filter(dept => dept.college_id === user.college_id);
+  
+  const allCollegeClasses = [...mockInitialClasses, ...mockCreatedClasses].filter(c => c.college_id === user.college_id);
+
+  return allCollegeClasses.map(cls => ({
+    ...cls,
+    department_name: collegeDepartments.find(d => d.department_id === cls.department_id)?.name || "Unknown Dept."
+  }));
+}
+
+export async function fetchStudentsForCollegeAdmin(): Promise<Student[]> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const user = await getUserFromCookies(cookies());
+    if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+        return [];
+    }
+    const collegeId = user.college_id;
+    const allClasses = [...mockInitialClasses, ...mockCreatedClasses];
+    const allStudents = [...mockInitialStudents, ...mockCreatedStudents];
+
+    return allStudents
+        .filter(s => s.college_id === collegeId)
+        .map(student => ({
+            ...student,
+            class_name: allClasses.find(c => c.class_id === student.class_id && c.college_id === collegeId)?.class_name || "Unknown Class"
+        }));
+}
+
+export async function fetchSubjectsForCollegeAdmin(): Promise<Subject[]> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const user = await getUserFromCookies(cookies());
+     if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+        return [];
+    }
+    const collegeId = user.college_id;
+    const allClasses = [...mockInitialClasses, ...mockCreatedClasses];
+    const allSubjects = [...mockInitialSubjects, ...mockCreatedSubjects];
+
+    return allSubjects
+        .filter(s => s.college_id === collegeId)
+        .map(subject => ({
+            ...subject,
+            class_name: allClasses.find(c => c.class_id === subject.class_id && c.college_id === collegeId)?.class_name || "Unknown Class"
+        }));
+}
+
+export async function fetchSubjectsForClass(classId: number): Promise<Subject[]> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const user = await getUserFromCookies(cookies());
+    if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+        return [];
+    }
+    const collegeId = user.college_id;
+    const allSubjects = [...mockInitialSubjects, ...mockCreatedSubjects];
+    return allSubjects.filter(s => s.class_id === classId && s.college_id === collegeId);
+}
+
+
+export async function fetchExamsForCollegeAdmin(): Promise<Exam[]> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const user = await getUserFromCookies(cookies());
+    if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+        return [];
+    }
+    const collegeId = user.college_id;
+    const allClasses = [...mockInitialClasses, ...mockCreatedClasses];
+    const allExams = [...mockInitialExams, ...mockCreatedExams];
+
+    return allExams
+        .filter(e => e.college_id === collegeId)
+        .map(exam => ({
+            ...exam,
+            class_name: allClasses.find(c => c.class_id === exam.class_id && c.college_id === collegeId)?.class_name || "Unknown Class"
+        }));
+}
+
+
+// --- CRUD Actions ---
+
 // College Actions
 export async function createCollege(
   values: CreateCollegeFormValues
@@ -185,7 +304,6 @@ export async function createCollege(
     ...validatedFields.data,
   };
   mockCreatedColleges.push(mockCreatedCollege);
-  console.log('Mock Creating college:', mockCreatedCollege);
   
   revalidatePath('/admin/colleges'); 
 
@@ -208,40 +326,20 @@ export async function updateCollege(
   }
 
   let collegeIndex = mockCreatedColleges.findIndex(c => c.college_id === collegeId);
-  let sourceArray: 'created' | 'initial' | 'none' = 'none';
-
   if (collegeIndex !== -1) {
-    sourceArray = 'created';
-  } else {
-    collegeIndex = mockInitialColleges.findIndex(c => c.college_id === collegeId);
-    if (collegeIndex !== -1) {
-      sourceArray = 'initial';
-    }
-  }
-
-  if (sourceArray === 'none') {
-    return { success: false, error: `College with ID ${collegeId} not found for update.` };
+    mockCreatedColleges[collegeIndex] = { ...mockCreatedColleges[collegeIndex], ...validatedFields.data };
+    revalidatePath('/admin/colleges');
+    return { success: true, message: `College "${validatedFields.data.name}" updated.`, college: mockCreatedColleges[collegeIndex] };
   }
   
-  let updatedCollege: College;
-  if (sourceArray === 'created') {
-    updatedCollege = { ...mockCreatedColleges[collegeIndex], ...validatedFields.data };
-    mockCreatedColleges[collegeIndex] = updatedCollege;
-  } else { // sourceArray === 'initial'
-    // For static mock data, we update a copy but the page's getMockColleges won't reflect this.
-    updatedCollege = { ...mockInitialColleges[collegeIndex], ...validatedFields.data };
-    // mockInitialColleges[collegeIndex] = updatedCollege; // This would modify the "source of truth" for the mock
-    console.log('Mock Updating static college (UI list reflects original static data):', updatedCollege);
+  collegeIndex = mockInitialColleges.findIndex(c => c.college_id === collegeId);
+  if (collegeIndex !== -1) {
+    mockInitialColleges[collegeIndex] = { ...mockInitialColleges[collegeIndex], ...validatedFields.data };
+    revalidatePath('/admin/colleges');
+    return { success: true, message: `College "${validatedFields.data.name}" updated.`, college: mockInitialColleges[collegeIndex] };
   }
-  
-  console.log(`Mock Updating ${sourceArray} college:`, updatedCollege);
-  revalidatePath('/admin/colleges'); 
 
-  return {
-    success: true,
-    message: `College "${validatedFields.data.name}" (mock) updated successfully.`,
-    college: updatedCollege,
-  };
+  return { success: false, error: `College with ID ${collegeId} not found for update.` };
 }
 
 export async function deleteCollege(
@@ -253,22 +351,20 @@ export async function deleteCollege(
   mockCreatedColleges = mockCreatedColleges.filter(c => c.college_id !== collegeId);
 
   if (mockCreatedColleges.length < initialCreatedLength) {
-    console.log(`Mock Deleting college with ID: ${collegeId} from dynamic list.`);
     revalidatePath('/admin/colleges');
     return {
       success: true,
-      message: `College with ID ${collegeId} (mock) deleted successfully from dynamic list.`,
+      message: `College with ID ${collegeId} (mock dynamic) deleted successfully.`,
     };
   }
   
-  // Check if it was in the initial static list
-  const initialStaticIndex = mockInitialColleges.findIndex(c => c.college_id === collegeId);
-  if (initialStaticIndex !== -1) {
-    console.log(`Mock "Deleting" college with ID: ${collegeId} (was from static list). UI won't change for static items.`);
+  const initialStaticLength = mockInitialColleges.length;
+  mockInitialColleges = mockInitialColleges.filter(c => c.college_id !== collegeId);
+   if (mockInitialColleges.length < initialStaticLength) {
     revalidatePath('/admin/colleges');
     return {
       success: true,
-      message: `College with ID ${collegeId} (mock static item) processed for deletion. Static list items are not removed from UI by this mock.`,
+      message: `College with ID ${collegeId} (mock static) deleted successfully.`,
     };
   }
 
@@ -304,7 +400,6 @@ export async function createUser(
   };
 
   mockCreatedUsers.push(newUser);
-  console.log('Mock Creating user:', newUser);
   
   revalidatePath('/admin/users');
 
@@ -341,7 +436,6 @@ export async function createDepartment(
   };
 
   mockCreatedDepartments.push(newDepartment);
-  console.log(`Mock Creating department "${name}" for college ID ${collegeId}:`, newDepartment);
   
   revalidatePath('/college-admin/departments');
 
@@ -369,22 +463,20 @@ export async function updateDepartment(
 
     let deptIndex = mockCreatedDepartments.findIndex(d => d.department_id === departmentId && d.college_id === user.college_id);
     if (deptIndex !== -1) {
-        mockCreatedDepartments[deptIndex] = { ...mockCreatedDepartments[deptIndex], ...validatedFields.data };
+        mockCreatedDepartments[deptIndex] = { ...mockCreatedDepartments[deptIndex], ...validatedFields.data, college_id: user.college_id };
         revalidatePath('/college-admin/departments');
         return { success: true, message: `Department "${validatedFields.data.name}" updated.`, department: mockCreatedDepartments[deptIndex] };
     }
     
     deptIndex = mockInitialDepartments.findIndex(d => d.department_id === departmentId && d.college_id === user.college_id);
     if (deptIndex !== -1) {
-        // mockInitialDepartments[deptIndex] = { ...mockInitialDepartments[deptIndex], ...validatedFields.data }; // Not truly updating static source
-        console.log("Mock updating static department", { ...mockInitialDepartments[deptIndex], ...validatedFields.data })
+        mockInitialDepartments[deptIndex] = { ...mockInitialDepartments[deptIndex], ...validatedFields.data, college_id: user.college_id };
         revalidatePath('/college-admin/departments');
-        return { success: true, message: `Static Department "${validatedFields.data.name}" processed for update.`, department: { ...mockInitialDepartments[deptIndex], ...validatedFields.data } };
+        return { success: true, message: `Department "${validatedFields.data.name}" updated.`, department: mockInitialDepartments[deptIndex] };
     }
 
     return { success: false, error: `Department with ID ${departmentId} not found in your college.` };
 }
-
 
 // Class Actions
 export async function createClass(
@@ -414,7 +506,6 @@ export async function createClass(
   };
 
   mockCreatedClasses.push(newClass);
-  console.log(`Mock Creating class "${class_name}" for college ID ${collegeId}, department ID ${department_id}:`, newClass);
 
   revalidatePath('/college-admin/classes');
 
@@ -442,16 +533,16 @@ export async function updateClass(
 
     let classIndex = mockCreatedClasses.findIndex(c => c.class_id === classId && c.college_id === user.college_id);
     if (classIndex !== -1) {
-        mockCreatedClasses[classIndex] = { ...mockCreatedClasses[classIndex], ...validatedFields.data };
+        mockCreatedClasses[classIndex] = { ...mockCreatedClasses[classIndex], ...validatedFields.data, college_id: user.college_id };
         revalidatePath('/college-admin/classes');
         return { success: true, message: `Class "${validatedFields.data.class_name}" updated.`, class: mockCreatedClasses[classIndex] };
     }
 
     classIndex = mockInitialClasses.findIndex(c => c.class_id === classId && c.college_id === user.college_id);
     if (classIndex !== -1) {
-        console.log("Mock updating static class", { ...mockInitialClasses[classIndex], ...validatedFields.data });
+        mockInitialClasses[classIndex] = { ...mockInitialClasses[classIndex], ...validatedFields.data, college_id: user.college_id };
         revalidatePath('/college-admin/classes');
-        return { success: true, message: `Static Class "${validatedFields.data.class_name}" processed for update.`, class: { ...mockInitialClasses[classIndex], ...validatedFields.data } };
+        return { success: true, message: `Class "${validatedFields.data.class_name}" updated.`, class: mockInitialClasses[classIndex] };
     }
     return { success: false, error: `Class with ID ${classId} not found in your college.` };
 }
@@ -482,7 +573,6 @@ export async function createStudent(
   };
 
   mockCreatedStudents.push(newStudent);
-  console.log(`Mock Creating student "${newStudent.full_name}" for class ID ${newStudent.class_id} in college ID ${user.college_id}:`, newStudent);
 
   revalidatePath('/shared-management/students'); 
 
@@ -508,18 +598,19 @@ export async function updateStudent(
         return { success: false, error: 'Invalid input for updating student.' };
     }
     
-    let studentIndex = mockCreatedStudents.findIndex(s => s.student_id === studentId && s.college_id === user.college_id);
+    const collegeId = user.college_id;
+    let studentIndex = mockCreatedStudents.findIndex(s => s.student_id === studentId && s.college_id === collegeId);
     if (studentIndex !== -1) {
-        mockCreatedStudents[studentIndex] = { ...mockCreatedStudents[studentIndex], ...validatedFields.data, college_id: user.college_id };
+        mockCreatedStudents[studentIndex] = { ...mockCreatedStudents[studentIndex], ...validatedFields.data, college_id: collegeId };
         revalidatePath('/shared-management/students');
         return { success: true, message: `Student "${validatedFields.data.full_name}" updated.`, student: mockCreatedStudents[studentIndex] };
     }
     
-    studentIndex = mockInitialStudents.findIndex(s => s.student_id === studentId && s.college_id === user.college_id);
+    studentIndex = mockInitialStudents.findIndex(s => s.student_id === studentId && s.college_id === collegeId);
     if (studentIndex !== -1) {
-        console.log("Mock updating static student", { ...mockInitialStudents[studentIndex], ...validatedFields.data, college_id: user.college_id });
+        mockInitialStudents[studentIndex] = { ...mockInitialStudents[studentIndex], ...validatedFields.data, college_id: collegeId };
         revalidatePath('/shared-management/students');
-        return { success: true, message: `Static Student "${validatedFields.data.full_name}" processed for update.`, student: { ...mockInitialStudents[studentIndex], ...validatedFields.data, college_id: user.college_id } };
+        return { success: true, message: `Student "${validatedFields.data.full_name}" updated.`, student: mockInitialStudents[studentIndex] };
     }
 
     return { success: false, error: `Student with ID ${studentId} not found in your college.` };
@@ -553,7 +644,6 @@ export async function createSubject(
   };
 
   mockCreatedSubjects.push(newSubject);
-  console.log(`Mock Creating subject "${subject_name}" (Code: ${subject_code}) for class ID ${class_id}:`, newSubject);
 
   revalidatePath('/shared-management/subjects');
 
@@ -578,19 +668,20 @@ export async function updateSubject(
     if (!validatedFields.success) {
         return { success: false, error: 'Invalid input for updating subject.' };
     }
-
-    let subjectIndex = mockCreatedSubjects.findIndex(s => s.subject_id === subjectId && s.college_id === user.college_id);
+    
+    const collegeId = user.college_id;
+    let subjectIndex = mockCreatedSubjects.findIndex(s => s.subject_id === subjectId && s.college_id === collegeId);
     if (subjectIndex !== -1) {
-        mockCreatedSubjects[subjectIndex] = { ...mockCreatedSubjects[subjectIndex], ...validatedFields.data, college_id: user.college_id };
+        mockCreatedSubjects[subjectIndex] = { ...mockCreatedSubjects[subjectIndex], ...validatedFields.data, college_id: collegeId };
         revalidatePath('/shared-management/subjects');
         return { success: true, message: `Subject "${validatedFields.data.subject_name}" updated.`, subject: mockCreatedSubjects[subjectIndex] };
     }
     
-    subjectIndex = mockInitialSubjects.findIndex(s => s.subject_id === subjectId && s.college_id === user.college_id);
+    subjectIndex = mockInitialSubjects.findIndex(s => s.subject_id === subjectId && s.college_id === collegeId);
     if (subjectIndex !== -1) {
-        console.log("Mock updating static subject", { ...mockInitialSubjects[subjectIndex], ...validatedFields.data, college_id: user.college_id });
+        mockInitialSubjects[subjectIndex] = { ...mockInitialSubjects[subjectIndex], ...validatedFields.data, college_id: collegeId };
         revalidatePath('/shared-management/subjects');
-        return { success: true, message: `Static Subject "${validatedFields.data.subject_name}" processed for update.`, subject: { ...mockInitialSubjects[subjectIndex], ...validatedFields.data, college_id: user.college_id } };
+        return { success: true, message: `Subject "${validatedFields.data.subject_name}" updated.`, subject: mockInitialSubjects[subjectIndex] };
     }
 
     return { success: false, error: `Subject with ID ${subjectId} not found in your college.` };
@@ -614,7 +705,6 @@ export async function createExam(
   };
 
   mockCreatedExams.push(newExam);
-  console.log(`Mock Creating exam "${newExam.name}" for class ID ${newExam.class_id}:`, newExam);
 
   revalidatePath('/shared-management/exams');
 
@@ -635,23 +725,24 @@ export async function updateExam(
         return { success: false, error: 'Unauthorized or college ID missing.' };
     }
 
-    const validatedFields = createExamSchema.safeParse(values); // Assuming schema handles date stringification
+    const validatedFields = createExamSchema.safeParse(values); 
     if (!validatedFields.success) {
         return { success: false, error: 'Invalid input for updating exam.' };
     }
     
-    let examIndex = mockCreatedExams.findIndex(e => e.exam_id === examId && e.college_id === user.college_id);
+    const collegeId = user.college_id;
+    let examIndex = mockCreatedExams.findIndex(e => e.exam_id === examId && e.college_id === collegeId);
     if (examIndex !== -1) {
-        mockCreatedExams[examIndex] = { ...mockCreatedExams[examIndex], ...validatedFields.data, college_id: user.college_id };
+        mockCreatedExams[examIndex] = { ...mockCreatedExams[examIndex], ...validatedFields.data, college_id: collegeId };
         revalidatePath('/shared-management/exams');
         return { success: true, message: `Exam "${validatedFields.data.name}" updated.`, exam: mockCreatedExams[examIndex] };
     }
 
-    examIndex = mockInitialExams.findIndex(e => e.exam_id === examId && e.college_id === user.college_id);
+    examIndex = mockInitialExams.findIndex(e => e.exam_id === examId && e.college_id === collegeId);
     if (examIndex !== -1) {
-        console.log("Mock updating static exam", { ...mockInitialExams[examIndex], ...validatedFields.data, college_id: user.college_id });
+        mockInitialExams[examIndex] = { ...mockInitialExams[examIndex], ...validatedFields.data, college_id: collegeId };
         revalidatePath('/shared-management/exams');
-        return { success: true, message: `Static Exam "${validatedFields.data.name}" processed for update.`, exam: { ...mockInitialExams[examIndex], ...validatedFields.data, college_id: user.college_id } };
+        return { success: true, message: `Exam "${validatedFields.data.name}" updated.`, exam: mockInitialExams[examIndex] };
     }
 
     return { success: false, error: `Exam with ID ${examId} not found in your college.` };
@@ -676,15 +767,19 @@ export async function assignSubjectsToExam(
   const { exam_id, subject_ids } = validatedFields.data;
   const collegeId = user.college_id;
 
-  const examIsCreated = mockCreatedExams.some(e => e.exam_id === exam_id && e.college_id === collegeId);
-  const examIsInitial = mockInitialExams.some(e => e.exam_id === exam_id && e.college_id === collegeId);
+  const allExams = [...mockInitialExams, ...mockCreatedExams];
+  const targetExam = allExams.find(e => e.exam_id === exam_id && e.college_id === collegeId);
 
-  if (!examIsCreated && !examIsInitial) {
+  if (!targetExam) {
     return { success: false, error: `Exam with ID ${exam_id} not found in your college.` };
   }
 
-  const createdMappings: ExamSubjectMap[] = [];
+  // Update the target exam's assigned_subject_ids
+  targetExam.assigned_subject_ids = Array.from(new Set([...(targetExam.assigned_subject_ids || []), ...subject_ids]));
 
+
+  // Also update the mockExamSubjectMaps for good measure, though it's not directly used for display in this version
+  const createdMappings: ExamSubjectMap[] = [];
   subject_ids.forEach(subject_id => {
     const mappingExists = mockExamSubjectMaps.some(
       m => m.exam_id === exam_id && m.subject_id === subject_id && m.college_id === collegeId
@@ -701,31 +796,12 @@ export async function assignSubjectsToExam(
       createdMappings.push(newMapping);
     }
   });
-
-  console.log(`Mock Assigning ${subject_ids.length} subjects to exam ID ${exam_id} for college ID ${collegeId}:`, createdMappings);
   
-  const examIndexInCreated = mockCreatedExams.findIndex(e => e.exam_id === exam_id);
-  if (examIndexInCreated > -1) {
-    const currentAssigned = new Set(mockCreatedExams[examIndexInCreated].assigned_subject_ids || []);
-    subject_ids.forEach(id => currentAssigned.add(id));
-    mockCreatedExams[examIndexInCreated].assigned_subject_ids = Array.from(currentAssigned);
-  } else {
-    const examIndexInInitial = mockInitialExams.findIndex(e => e.exam_id === exam_id);
-    if (examIndexInInitial > -1) {
-        // For display purposes, we can update the static exam if it's referenced
-        // This change won't persist if the app restarts, but helps with demoing
-        const currentAssigned = new Set(mockInitialExams[examIndexInInitial].assigned_subject_ids || []);
-        subject_ids.forEach(id => currentAssigned.add(id));
-        mockInitialExams[examIndexInInitial].assigned_subject_ids = Array.from(currentAssigned);
-        console.log("Updated assigned_subject_ids for static exam:", mockInitialExams[examIndexInInitial]);
-    }
-  }
-
   revalidatePath('/shared-management/exams');
 
   return {
     success: true,
-    message: `${createdMappings.length} new subject(s) assigned to exam ID ${exam_id} successfully. Some may have been assigned previously.`,
+    message: `${subject_ids.length} subject(s) processed for assignment to exam ID ${exam_id}.`,
     mappings: createdMappings,
   };
 }

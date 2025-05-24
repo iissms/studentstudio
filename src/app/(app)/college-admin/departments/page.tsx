@@ -11,16 +11,8 @@ import { CreateDepartmentForm } from '@/components/college-admin/CreateDepartmen
 import { EditDepartmentForm } from '@/components/college-admin/EditDepartmentForm';
 import type { Department } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
+import { fetchDepartmentsForCollegeAdmin } from '@/lib/actions'; // Updated import
 // import { deleteDepartment } from '@/lib/actions'; // TODO: Implement deleteDepartment action
-
-async function getMockDepartments(): Promise<Department[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); 
-  return [
-    { department_id: 1, name: "Science Department", college_id: 1 },
-    { department_id: 2, name: "Humanities Department", college_id: 1 },
-    { department_id: 3, name: "Commerce Studies", college_id: 1 },
-  ];
-}
 
 export default function ManageDepartmentsPage() {
   const { toast } = useToast();
@@ -34,9 +26,16 @@ export default function ManageDepartmentsPage() {
 
   async function loadDepartments() {
     setIsLoading(true);
-    const fetchedDepartments = await getMockDepartments(); // In a real app, filter by college_id
-    setDepartments(fetchedDepartments);
-    setIsLoading(false);
+    try {
+      const fetchedDepartments = await fetchDepartmentsForCollegeAdmin(); // Use the new fetch action
+      setDepartments(fetchedDepartments);
+    } catch (error) {
+      console.error("Failed to fetch departments:", error);
+      toast({ title: "Error", description: "Could not load departments.", variant: "destructive"});
+      setDepartments([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   React.useEffect(() => {
@@ -44,13 +43,11 @@ export default function ManageDepartmentsPage() {
   }, []);
 
   const handleDepartmentCreated = () => {
-    // loadDepartments(); // Re-fetches static mock data. To see new items, getMockDepartments should be dynamic or merge with mockCreatedDepartments
-    console.log("Department created, ideally re-fetch or update list.");
+    loadDepartments();
   };
 
   const handleDepartmentUpdated = () => {
-    // loadDepartments(); 
-    console.log("Department updated, ideally re-fetch or update list.");
+    loadDepartments(); 
   };
   
   const openEditDialog = (department: Department) => {
@@ -76,6 +73,7 @@ export default function ManageDepartmentsPage() {
     toast({ title: "Mock Deletion", description: `Department "${departmentToDelete.name}" would be deleted.` });
     setIsDeleteDialogOpen(false);
     setDepartmentToDelete(null);
+    loadDepartments(); // Refresh list after mock deletion
   };
 
   return (
@@ -111,7 +109,7 @@ export default function ManageDepartmentsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Department List</CardTitle>
-          <CardDescription>A list of departments in your college. (Static Mock Data)</CardDescription>
+          <CardDescription>A list of departments in your college.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

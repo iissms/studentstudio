@@ -9,31 +9,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Library, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { CreateClassForm } from '@/components/college-admin/CreateClassForm'; 
 import { EditClassForm } from '@/components/college-admin/EditClassForm';
-import type { Class, Department } from '@/types'; 
+import type { Class } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
-
-async function getMockClasses(collegeId?: number): Promise<Class[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); 
-  const mockDepartments: Department[] = [
-    { department_id: 1, name: "Science Department", college_id: 1 },
-    { department_id: 2, name: "Humanities Department", college_id: 1 },
-    { department_id: 3, name: "Commerce Studies", college_id: 1 },
-    { department_id: 4, name: "Mathematics", college_id: 1 },
-  ];
-
-  const allClasses: Class[] = [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1 },
-  ];
-
-  return allClasses
-    .filter(c => collegeId ? c.college_id === collegeId : true) 
-    .map(c => ({
-      ...c,
-      department_name: mockDepartments.find(d => d.department_id === c.department_id)?.name || "Unknown Dept."
-    }));
-}
+import { fetchClassesForCollegeAdmin } from '@/lib/actions'; // Updated import
 
 export default function ManageClassesPage() {
   const { toast } = useToast();
@@ -45,25 +23,30 @@ export default function ManageClassesPage() {
   const [currentClassToEdit, setCurrentClassToEdit] = React.useState<Class | null>(null);
   const [classToDelete, setClassToDelete] = React.useState<Class | null>(null);
 
-  const collegeAdminCollegeId = 1; 
-
   async function loadClasses() {
     setIsLoading(true);
-    const fetchedClasses = await getMockClasses(collegeAdminCollegeId);
-    setClasses(fetchedClasses);
-    setIsLoading(false);
+    try {
+      const fetchedClasses = await fetchClassesForCollegeAdmin(); // Use new fetch action
+      setClasses(fetchedClasses);
+    } catch (error) {
+      console.error("Failed to fetch classes:", error);
+      toast({ title: "Error", description: "Could not load classes.", variant: "destructive"});
+      setClasses([]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   React.useEffect(() => {
     loadClasses();
-  }, [collegeAdminCollegeId]); 
+  }, []); 
 
   const handleClassCreated = () => {
-    console.log("Class created, ideally re-fetch or update list.");
+    loadClasses();
   };
 
   const handleClassUpdated = () => {
-    console.log("Class updated, ideally re-fetch or update list.");
+    loadClasses();
   };
 
   const openEditDialog = (cls: Class) => {
@@ -89,6 +72,7 @@ export default function ManageClassesPage() {
     toast({ title: "Mock Deletion", description: `Class "${classToDelete.class_name}" would be deleted.` });
     setIsDeleteDialogOpen(false);
     setClassToDelete(null);
+    loadClasses(); // Refresh list
   };
 
   return (
@@ -124,7 +108,7 @@ export default function ManageClassesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Class List</CardTitle>
-          <CardDescription>A list of classes in your college. (Static Mock Data)</CardDescription>
+          <CardDescription>A list of classes in your college.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -140,7 +124,7 @@ export default function ManageClassesPage() {
                     <div>
                       <h3 className="text-lg font-semibold">{cls.class_name}</h3>
                       <p className="text-sm text-muted-foreground">ID: {cls.class_id}</p>
-                      <p className="text-sm text-muted-foreground">Department: {cls.department_name} (ID: {cls.department_id})</p>
+                      <p className="text-sm text-muted-foreground">Department: {cls.department_name || 'N/A'} (ID: {cls.department_id})</p>
                       <p className="text-sm text-muted-foreground">Academic Year: {cls.academic_year}</p>
                     </div>
                     <div className="flex space-x-2">

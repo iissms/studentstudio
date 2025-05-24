@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { createClassSchema, type CreateClassFormValues } from '@/schemas/class';
-import { updateClass } from '@/lib/actions';
+import { updateClass, fetchDepartmentsForCollegeAdmin } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -28,16 +28,7 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from '@/components/ui/dialog';
 import type { Class, Department } from '@/types';
-
-async function getMockDepartmentsForCollegeAdmin(): Promise<Department[]> {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return [
-    { department_id: 1, name: "Science Department", college_id: 1 },
-    { department_id: 2, name: "Humanities Department", college_id: 1 },
-    { department_id: 3, name: "Commerce Studies", college_id: 1 },
-    { department_id: 4, name: "Mathematics", college_id: 1 },
-  ];
-}
+import { z } from 'zod';
 
 interface EditClassFormProps {
   classToEdit: Class;
@@ -54,12 +45,19 @@ export function EditClassForm({ classToEdit, onSuccess, setDialogOpen }: EditCla
   React.useEffect(() => {
     async function loadDepartments() {
       setIsDepartmentsLoading(true);
-      const fetchedDepartments = await getMockDepartmentsForCollegeAdmin();
-      setDepartments(fetchedDepartments);
-      setIsDepartmentsLoading(false);
+      try {
+        const fetchedDepartments = await fetchDepartmentsForCollegeAdmin(); // Use new fetch action
+        setDepartments(fetchedDepartments);
+      } catch (error) {
+        console.error("Failed to fetch departments for edit class form:", error);
+        toast({ title: "Error", description: "Could not load departments for selection.", variant: "destructive"});
+        setDepartments([]);
+      } finally {
+        setIsDepartmentsLoading(false);
+      }
     }
     loadDepartments();
-  }, []);
+  }, [toast]);
 
   const form = useForm<CreateClassFormValues>({
     resolver: zodResolver(createClassSchema),
@@ -138,7 +136,7 @@ export function EditClassForm({ classToEdit, onSuccess, setDialogOpen }: EditCla
             <FormItem>
               <FormLabel htmlFor="department_id">Department</FormLabel>
               <Select
-                onValueChange={(value) => field.onChange(parseInt(value, 10))}
+                onValueChange={(value) => field.onChange(parseInt(value, 10))} // Schema handles transform
                 defaultValue={field.value?.toString()}
                 disabled={isLoading || isDepartmentsLoading}
               >
@@ -196,4 +194,3 @@ export function EditClassForm({ classToEdit, onSuccess, setDialogOpen }: EditCla
     </Form>
   );
 }
-

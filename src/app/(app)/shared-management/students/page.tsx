@@ -12,18 +12,7 @@ import { EditStudentForm } from '@/components/college-admin/EditStudentForm';
 import type { Student } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-
-
-async function getMockStudents(collegeId?: number): Promise<Student[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); 
-  
-  const staticMockStudents: Student[] = [
-    { student_id: 2001, class_id: 101, college_id: 1, roll_number: "SC001", full_name: "Alice Wonderland", dob: "2005-03-10", gender: "Female", email: "alice@example.com", phone: "1234567890", address: "123 Fantasy Lane", admission_date: "2023-06-01", class_name: "1st PUC Science" },
-    { student_id: 2002, class_id: 102, college_id: 1, roll_number: "CM001", full_name: "Bob The Builder", dob: "2004-07-15", gender: "Male", email: "bob@example.com", phone: "0987654321", address: "456 Tool Street", admission_date: "2022-07-01", class_name: "2nd PUC Commerce" },
-  ];
-
-  return staticMockStudents.filter(s => collegeId ? s.college_id === collegeId : true);
-}
+import { fetchStudentsForCollegeAdmin } from '@/lib/actions'; // Updated import
 
 
 export default function ManageStudentsPage() {
@@ -36,28 +25,31 @@ export default function ManageStudentsPage() {
   const [currentStudentToEdit, setCurrentStudentToEdit] = React.useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = React.useState<Student | null>(null);
   
-  const collegeAdminCollegeId = 1; 
-
   async function loadStudents() {
       setIsLoading(true);
-      const fetchedStudents = await getMockStudents(collegeAdminCollegeId);
-      setStudents(fetchedStudents);
-      setIsLoading(false);
+      try {
+        const fetchedStudents = await fetchStudentsForCollegeAdmin(); // Use new fetch action
+        setStudents(fetchedStudents);
+      } catch (error) {
+        console.error("Failed to fetch students:", error);
+        toast({ title: "Error", description: "Could not load students.", variant: "destructive"});
+        setStudents([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
   React.useEffect(() => {
     loadStudents();
-  }, [collegeAdminCollegeId]);
+  }, []);
 
 
   const handleStudentAdded = () => {
-    console.log("Student added. To see in list, mock data fetching would need to be dynamic.");
-    // loadStudents(); // Would refetch static mock data
+    loadStudents(); 
   };
 
   const handleStudentUpdated = () => {
-    console.log("Student updated. To see in list, mock data fetching would need to be dynamic.");
-    // loadStudents();
+    loadStudents();
   };
 
   const openEditDialog = (student: Student) => {
@@ -83,6 +75,7 @@ export default function ManageStudentsPage() {
     toast({ title: "Mock Deletion", description: `Student "${studentToDelete.full_name}" would be deleted.` });
     setIsDeleteDialogOpen(false);
     setStudentToDelete(null);
+    loadStudents(); // Refresh list
   };
 
   return (
@@ -117,7 +110,7 @@ export default function ManageStudentsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Student List</CardTitle>
-          <CardDescription>A list of students in your college. (Static Mock Data)</CardDescription>
+          <CardDescription>A list of students in your college.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

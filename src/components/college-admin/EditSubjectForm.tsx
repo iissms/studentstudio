@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject';
-import { updateSubject } from '@/lib/actions';
+import { updateSubject, fetchClassesForCollegeAdmin } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -28,15 +28,7 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from '@/components/ui/dialog';
 import type { Subject, Class } from '@/types';
-
-async function getMockClassesForCollegeAdmin(): Promise<Class[]> {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1 },
-  ];
-}
+import { z } from 'zod';
 
 interface EditSubjectFormProps {
   subjectToEdit: Subject;
@@ -53,12 +45,19 @@ export function EditSubjectForm({ subjectToEdit, onSuccess, setDialogOpen }: Edi
   React.useEffect(() => {
     async function loadClasses() {
       setIsClassesLoading(true);
-      const fetchedClasses = await getMockClassesForCollegeAdmin();
-      setClasses(fetchedClasses);
-      setIsClassesLoading(false);
+      try {
+        const fetchedClasses = await fetchClassesForCollegeAdmin(); // Use new fetch action
+        setClasses(fetchedClasses);
+      } catch (error) {
+        console.error("Failed to fetch classes for edit subject form:", error);
+        toast({ title: "Error", description: "Could not load classes for selection.", variant: "destructive"});
+        setClasses([]);
+      } finally {
+        setIsClassesLoading(false);
+      }
     }
     loadClasses();
-  }, []);
+  }, [toast]);
 
   const form = useForm<CreateSubjectFormValues>({
     resolver: zodResolver(createSubjectSchema),
@@ -121,7 +120,7 @@ export function EditSubjectForm({ subjectToEdit, onSuccess, setDialogOpen }: Edi
             <FormItem>
               <FormLabel htmlFor="class_id">Assign to Class</FormLabel>
               <Select
-                onValueChange={(value) => field.onChange(parseInt(value,10))}
+                onValueChange={(value) => field.onChange(parseInt(value,10))} // Schema handles transform
                 defaultValue={field.value?.toString()}
                 disabled={isLoading || isClassesLoading}
               >

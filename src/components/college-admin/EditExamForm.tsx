@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { createExamSchema, type CreateExamFormValues, type CreateExamFormInputValues } from '@/schemas/exam';
-import { updateExam } from '@/lib/actions';
+import { updateExam, fetchClassesForCollegeAdmin } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -31,15 +31,6 @@ import { DatePicker } from '@/components/ui/date-picker';
 import type { Exam, Class } from '@/types';
 import { z } from 'zod';
 
-async function getMockClassesForCollegeAdmin(): Promise<Class[]> {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1 },
-  ];
-}
-
 interface EditExamFormProps {
   examToEdit: Exam;
   onSuccess?: () => void;
@@ -55,12 +46,19 @@ export function EditExamForm({ examToEdit, onSuccess, setDialogOpen }: EditExamF
   React.useEffect(() => {
     async function loadClasses() {
       setIsClassesLoading(true);
-      const fetchedClasses = await getMockClassesForCollegeAdmin();
-      setClasses(fetchedClasses);
-      setIsClassesLoading(false);
+      try {
+        const fetchedClasses = await fetchClassesForCollegeAdmin(); // Use new fetch action
+        setClasses(fetchedClasses);
+      } catch (error) {
+        console.error("Failed to fetch classes for edit exam form:", error);
+        toast({ title: "Error", description: "Could not load classes for selection.", variant: "destructive"});
+        setClasses([]);
+      } finally {
+        setIsClassesLoading(false);
+      }
     }
     loadClasses();
-  }, []);
+  }, [toast]);
 
   const form = useForm<CreateExamFormInputValues>({
     resolver: zodResolver(createExamSchema),
@@ -81,8 +79,8 @@ export function EditExamForm({ examToEdit, onSuccess, setDialogOpen }: EditExamF
         name: examToEdit.name,
         marks: examToEdit.marks,
         min_marks: examToEdit.min_marks,
-        start_date: new Date(examToEdit.start_date), // Ensure Date object
-        end_date: new Date(examToEdit.end_date),     // Ensure Date object
+        start_date: new Date(examToEdit.start_date), 
+        end_date: new Date(examToEdit.end_date),     
       });
     }
   }, [examToEdit, form]);
@@ -137,7 +135,7 @@ export function EditExamForm({ examToEdit, onSuccess, setDialogOpen }: EditExamF
             <FormItem>
               <FormLabel htmlFor="class_id">Class</FormLabel>
               <Select
-                onValueChange={field.onChange} // Schema handles transform to number
+                onValueChange={field.onChange} 
                 defaultValue={field.value}
                 disabled={isLoading || isClassesLoading}
               >

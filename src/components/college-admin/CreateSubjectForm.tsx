@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject';
-import { createSubject } from '@/lib/actions'; // Server action
+import { createSubject, fetchClassesForCollegeAdmin } from '@/lib/actions'; // Updated import
 import {
   Form,
   FormControl,
@@ -27,19 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialogFooter } from '@/components/ui/dialog';
-import type { Class } from '@/types'; // Import Class type
-
-// Mock function to fetch classes for the dropdown, specific to College Admin's college
-// In a real app, this would fetch from an API based on the logged-in admin's college_id
-async function getMockClassesForCollegeAdmin(): Promise<Class[]> {
-  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-  // This should ideally be filtered by the admin's college_id
-  return [
-    { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
-    { class_id: 103, class_name: "B.A. History Sem 1", department_id: 2, academic_year: "2025-2026", college_id: 1 },
-  ];
-}
+import type { Class } from '@/types'; 
+import { z } from 'zod';
 
 interface CreateSubjectFormProps {
   onSuccess?: () => void;
@@ -55,12 +44,19 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
   React.useEffect(() => {
     async function loadClasses() {
       setIsClassesLoading(true);
-      const fetchedClasses = await getMockClassesForCollegeAdmin();
-      setClasses(fetchedClasses);
-      setIsClassesLoading(false);
+      try {
+        const fetchedClasses = await fetchClassesForCollegeAdmin(); // Use new fetch action
+        setClasses(fetchedClasses);
+      } catch (error) {
+        console.error("Failed to fetch classes for subject form:", error);
+        toast({ title: "Error", description: "Could not load classes for selection.", variant: "destructive"});
+        setClasses([]);
+      } finally {
+        setIsClassesLoading(false);
+      }
     }
     loadClasses();
-  }, []);
+  }, [toast]);
 
   const form = useForm<CreateSubjectFormValues>({
     resolver: zodResolver(createSubjectSchema),
@@ -68,7 +64,7 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
       class_id: undefined,
       subject_code: '',
       subject_name: '',
-      type: undefined, // Default to no type selected
+      type: undefined, 
     },
   });
 
@@ -112,7 +108,7 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
             <FormItem>
               <FormLabel htmlFor="class_id">Assign to Class</FormLabel>
               <Select
-                onValueChange={field.onChange}
+                onValueChange={field.onChange} // Schema handles transform
                 defaultValue={field.value?.toString()}
                 disabled={isLoading || isClassesLoading}
               >
