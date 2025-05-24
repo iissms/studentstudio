@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { loginSchema, type LoginFormValues } from '@/schemas/auth'
 import type { User } from '@/types'
 import { redirect } from 'next/navigation'
+import type { SignJWT, JWTPayload } from 'jose' // Ensure jose types are available if used for signing, though not directly here.
 
 // It's better to read env variables inside the function if they might not be available at module load time in all environments.
 // However, for server actions, they are generally available.
@@ -49,8 +50,7 @@ export async function loginUser(
     }
 
     // Backend is expected to set the HttpOnly cookie.
-    // The token might be in the response body, but we rely on the cookie being set.
-    // If your backend sets the cookie correctly, no further action is needed here regarding the token.
+    // The token might be in the response body (as per user's example), but we rely on the HttpOnly cookie being set by the backend.
     // const responseData = await response.json(); // Contains { token: "..." }
     // We don't need to manually set the cookie here if the backend does it via Set-Cookie header.
 
@@ -66,14 +66,19 @@ export async function loginUser(
 
 export async function logoutUser() {
   const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token'
-  // Instruct the browser to clear the cookie by setting it to an empty value and a past expiry date
-  cookies().set(AUTH_COOKIE_NAME, '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    expires: new Date(0),
+  
+  // Use cookies().delete() to remove the cookie.
+  // This is a more direct method than setting an expired cookie.
+  // The options should match how the cookie was set, especially 'path'.
+  cookies().delete(AUTH_COOKIE_NAME, {
     path: '/',
-    sameSite: 'lax', // or 'strict' depending on your requirements
-  })
+    // httpOnly and secure flags are not specified for delete by default,
+    // but path is crucial. If domain or secure was used when setting,
+    // they might be needed here too for some browsers/scenarios.
+    // For HttpOnly cookies, the browser handles deletion based on name, path, domain.
+  });
+
   // Redirect to login page after logout
   redirect('/login')
 }
+
