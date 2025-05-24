@@ -5,9 +5,11 @@ import * as React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Library, PlusCircle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Library, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { CreateClassForm } from '@/components/college-admin/CreateClassForm'; 
 import type { Class, Department } from '@/types'; 
+import { useToast } from '@/hooks/use-toast';
 
 async function getMockClasses(collegeId?: number): Promise<Class[]> {
   await new Promise(resolve => setTimeout(resolve, 500)); 
@@ -33,9 +35,14 @@ async function getMockClasses(collegeId?: number): Promise<Class[]> {
 }
 
 export default function ManageClassesPage() {
+  const { toast } = useToast();
   const [classes, setClasses] = React.useState<Class[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [currentClassToEdit, setCurrentClassToEdit] = React.useState<Class | null>(null);
+  const [classToDelete, setClassToDelete] = React.useState<Class | null>(null);
 
   const collegeAdminCollegeId = 1; 
 
@@ -53,6 +60,35 @@ export default function ManageClassesPage() {
     console.log("Class created, ideally re-fetch or update list.");
   };
 
+  const handleClassUpdated = () => {
+    console.log("Class updated, ideally re-fetch or update list.");
+  };
+
+  const openEditDialog = (cls: Class) => {
+    setCurrentClassToEdit(cls);
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (cls: Class) => {
+    setClassToDelete(cls);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!classToDelete) return;
+    // TODO: Implement actual deleteClass server action
+    // const result = await deleteClass(classToDelete.class_id);
+    // if (result.success) {
+    //   toast({ title: "Class Deleted", description: `Class "${classToDelete.class_name}" has been deleted.` });
+    //   loadClasses(); 
+    // } else {
+    //   toast({ title: "Deletion Failed", description: result.error || "Could not delete the class.", variant: "destructive" });
+    // }
+    toast({ title: "Mock Deletion", description: `Class "${classToDelete.class_name}" would be deleted.` });
+    setIsDeleteDialogOpen(false);
+    setClassToDelete(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -64,7 +100,7 @@ export default function ManageClassesPage() {
             Create and manage classes, linking them to departments for the academic year.
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -78,7 +114,7 @@ export default function ManageClassesPage() {
                 Fill in the details below to add a new class.
               </DialogDescription>
             </DialogHeader>
-            <CreateClassForm onSuccess={handleClassCreated} setDialogOpen={setIsDialogOpen} />
+            <CreateClassForm onSuccess={handleClassCreated} setDialogOpen={setIsCreateDialogOpen} />
           </DialogContent>
         </Dialog>
       </div>
@@ -98,11 +134,24 @@ export default function ManageClassesPage() {
                   key={cls.class_id} 
                   className="p-4 border rounded-md shadow-sm bg-card hover:shadow-lg transition-shadow duration-200"
                 >
-                  <h3 className="text-lg font-semibold">{cls.class_name}</h3>
-                  <p className="text-sm text-muted-foreground">ID: {cls.class_id}</p>
-                  <p className="text-sm text-muted-foreground">Department: {cls.department_name} (ID: {cls.department_id})</p>
-                  <p className="text-sm text-muted-foreground">Academic Year: {cls.academic_year}</p>
-                  {/* TODO: Add Edit/Delete buttons here */}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold">{cls.class_name}</h3>
+                      <p className="text-sm text-muted-foreground">ID: {cls.class_id}</p>
+                      <p className="text-sm text-muted-foreground">Department: {cls.department_name} (ID: {cls.department_id})</p>
+                      <p className="text-sm text-muted-foreground">Academic Year: {cls.academic_year}</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => openEditDialog(cls)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(cls)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -117,6 +166,42 @@ export default function ManageClassesPage() {
           )}
         </CardContent>
       </Card>
+
+      {currentClassToEdit && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[450px]">
+            <DialogHeader>
+              <DialogTitle>Edit Class</DialogTitle>
+              <DialogDescription>
+                Update the details for {currentClassToEdit.class_name}.
+              </DialogDescription>
+            </DialogHeader>
+            {/* TODO: Implement EditClassForm component and import here */}
+            {/* <EditClassForm classToEdit={currentClassToEdit} onSuccess={handleClassUpdated} setDialogOpen={setIsEditDialogOpen} /> */}
+            <p className="py-4 text-center text-muted-foreground">Edit Class Form will be here.</p>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {classToDelete && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the class
+                "{classToDelete.class_name}" (ID: {classToDelete.class_id}).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setClassToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>
+                Yes, delete class
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

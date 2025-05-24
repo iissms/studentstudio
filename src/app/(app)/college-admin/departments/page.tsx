@@ -5,9 +5,11 @@ import * as React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, PlusCircle } from "lucide-react"; // Added PlusCircle for consistency
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Building2, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { CreateDepartmentForm } from '@/components/college-admin/CreateDepartmentForm'; 
 import type { Department } from '@/types'; 
+import { useToast } from '@/hooks/use-toast';
 
 async function getMockDepartments(): Promise<Department[]> {
   await new Promise(resolve => setTimeout(resolve, 500)); 
@@ -19,9 +21,14 @@ async function getMockDepartments(): Promise<Department[]> {
 }
 
 export default function ManageDepartmentsPage() {
+  const { toast } = useToast();
   const [departments, setDepartments] = React.useState<Department[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [currentDepartmentToEdit, setCurrentDepartmentToEdit] = React.useState<Department | null>(null);
+  const [departmentToDelete, setDepartmentToDelete] = React.useState<Department | null>(null);
 
   React.useEffect(() => {
     async function loadDepartments() {
@@ -38,6 +45,36 @@ export default function ManageDepartmentsPage() {
     // loadDepartments(); // Would re-fetch static mock data
   };
 
+  const handleDepartmentUpdated = () => {
+    console.log("Department updated, ideally re-fetch or update list.");
+    // loadDepartments(); 
+  };
+  
+  const openEditDialog = (department: Department) => {
+    setCurrentDepartmentToEdit(department);
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (department: Department) => {
+    setDepartmentToDelete(department);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!departmentToDelete) return;
+    // TODO: Implement actual deleteDepartment server action
+    // const result = await deleteDepartment(departmentToDelete.department_id);
+    // if (result.success) {
+    //   toast({ title: "Department Deleted", description: `Department "${departmentToDelete.name}" has been deleted.` });
+    //   loadDepartments(); // Re-fetch or optimistically update
+    // } else {
+    //   toast({ title: "Deletion Failed", description: result.error || "Could not delete the department.", variant: "destructive" });
+    // }
+    toast({ title: "Mock Deletion", description: `Department "${departmentToDelete.name}" would be deleted.` });
+    setIsDeleteDialogOpen(false);
+    setDepartmentToDelete(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -49,10 +86,10 @@ export default function ManageDepartmentsPage() {
             Create and manage departments within your college.
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> {/* Changed icon for consistency */}
+              <PlusCircle className="mr-2 h-4 w-4" />
               Add Department
             </Button>
           </DialogTrigger>
@@ -63,7 +100,7 @@ export default function ManageDepartmentsPage() {
                 Fill in the details below to add a new department.
               </DialogDescription>
             </DialogHeader>
-            <CreateDepartmentForm onSuccess={handleDepartmentCreated} setDialogOpen={setIsDialogOpen} />
+            <CreateDepartmentForm onSuccess={handleDepartmentCreated} setDialogOpen={setIsCreateDialogOpen} />
           </DialogContent>
         </Dialog>
       </div>
@@ -83,9 +120,22 @@ export default function ManageDepartmentsPage() {
                   key={dept.department_id} 
                   className="p-4 border rounded-md shadow-sm bg-card hover:shadow-lg transition-shadow duration-200"
                 >
-                  <h3 className="text-lg font-semibold">{dept.name}</h3>
-                  <p className="text-sm text-muted-foreground">ID: {dept.department_id}</p>
-                  {/* TODO: Add Edit/Delete buttons here */}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold">{dept.name}</h3>
+                      <p className="text-sm text-muted-foreground">ID: {dept.department_id}</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => openEditDialog(dept)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(dept)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -100,6 +150,42 @@ export default function ManageDepartmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {currentDepartmentToEdit && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Department</DialogTitle>
+              <DialogDescription>
+                Update the details for {currentDepartmentToEdit.name}.
+              </DialogDescription>
+            </DialogHeader>
+            {/* TODO: Implement EditDepartmentForm component and import here */}
+            {/* <EditDepartmentForm departmentToEdit={currentDepartmentToEdit} onSuccess={handleDepartmentUpdated} setDialogOpen={setIsEditDialogOpen} /> */}
+            <p className="py-4 text-center text-muted-foreground">Edit Department Form will be here.</p>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {departmentToDelete && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the department
+                "{departmentToDelete.name}" (ID: {departmentToDelete.department_id}).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDepartmentToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>
+                Yes, delete department
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

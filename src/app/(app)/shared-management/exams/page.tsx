@@ -5,11 +5,13 @@ import * as React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Newspaper, PlusCircle, BookOpenCheck } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Newspaper, PlusCircle, BookOpenCheck, Pencil, Trash2 } from "lucide-react";
 import { format } from 'date-fns';
 import { CreateExamForm } from '@/components/college-admin/CreateExamForm'; 
 import { AssignSubjectsToExamForm } from '@/components/college-admin/AssignSubjectsToExamForm'; 
 import type { Exam } from '@/types'; 
+import { useToast } from '@/hooks/use-toast';
 
 async function getMockExams(collegeId?: number): Promise<Exam[]> {
   await new Promise(resolve => setTimeout(resolve, 500)); 
@@ -34,11 +36,16 @@ async function getMockExams(collegeId?: number): Promise<Exam[]> {
 
 
 export default function ManageExamsPage() {
+  const { toast } = useToast();
   const [exams, setExams] = React.useState<Exam[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isCreateExamDialogOpen, setIsCreateExamDialogOpen] = React.useState(false);
   const [isAssignSubjectsDialogOpen, setIsAssignSubjectsDialogOpen] = React.useState(false);
   const [currentExamForAssignment, setCurrentExamForAssignment] = React.useState<Exam | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [currentExamToEdit, setCurrentExamToEdit] = React.useState<Exam | null>(null);
+  const [examToDelete, setExamToDelete] = React.useState<Exam | null>(null);
 
   const collegeAdminCollegeId = 1; 
 
@@ -56,6 +63,10 @@ export default function ManageExamsPage() {
     console.log("Exam created, ideally re-fetch or update list.");
   };
 
+  const handleExamUpdated = () => {
+    console.log("Exam updated, ideally re-fetch or update list.");
+  };
+
   const handleSubjectsAssigned = () => {
     console.log("Subjects assigned to exam, ideally re-fetch or update exam details.");
   }
@@ -63,6 +74,31 @@ export default function ManageExamsPage() {
   const openAssignSubjectsDialog = (exam: Exam) => {
     setCurrentExamForAssignment(exam);
     setIsAssignSubjectsDialogOpen(true);
+  };
+
+  const openEditDialog = (exam: Exam) => {
+    setCurrentExamToEdit(exam);
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (exam: Exam) => {
+    setExamToDelete(exam);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!examToDelete) return;
+    // TODO: Implement actual deleteExam server action
+    // const result = await deleteExam(examToDelete.exam_id);
+    // if (result.success) {
+    //   toast({ title: "Exam Deleted", description: `Exam "${examToDelete.name}" has been deleted.` });
+    //   loadExams(); 
+    // } else {
+    //   toast({ title: "Deletion Failed", description: result.error || "Could not delete the exam.", variant: "destructive" });
+    // }
+    toast({ title: "Mock Deletion", description: `Exam "${examToDelete.name}" would be deleted.` });
+    setIsDeleteDialogOpen(false);
+    setExamToDelete(null);
   };
 
   return (
@@ -121,12 +157,21 @@ export default function ManageExamsPage() {
                         Assigned Subjects: {exam.assigned_subject_ids?.join(', ') || 'None'}
                       </p>
                     </div>
-                    <div className="flex flex-col space-y-2">
-                        <Button variant="outline" size="sm" onClick={() => openAssignSubjectsDialog(exam)}>
+                    <div className="flex flex-col space-y-2 items-end">
+                        <Button variant="outline" size="sm" onClick={() => openAssignSubjectsDialog(exam)} className="w-full justify-start">
                             <BookOpenCheck className="mr-2 h-4 w-4" />
                             Assign Subjects
                         </Button>
-                        {/* TODO: Add Edit/Delete buttons here */}
+                        <div className="flex space-x-2 mt-2">
+                          <Button variant="outline" size="sm" onClick={() => openEditDialog(exam)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(exam)}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                          </Button>
+                        </div>
                     </div>
                   </div>
                 </li>
@@ -160,6 +205,42 @@ export default function ManageExamsPage() {
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {currentExamToEdit && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Edit Exam</DialogTitle>
+              <DialogDescription>
+                Update the details for {currentExamToEdit.name}.
+              </DialogDescription>
+            </DialogHeader>
+            {/* TODO: Implement EditExamForm component and import here */}
+            {/* <EditExamForm examToEdit={currentExamToEdit} onSuccess={handleExamUpdated} setDialogOpen={setIsEditDialogOpen} /> */}
+            <p className="py-4 text-center text-muted-foreground">Edit Exam Form will be here.</p>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {examToDelete && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the exam
+                "{examToDelete.name}" (ID: {examToDelete.exam_id}).
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setExamToDelete(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete}>
+                Yes, delete exam
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { UserPlus, Users } from "lucide-react"; // Added Users
 import { CreateUserForm } from '@/components/admin/CreateUserForm';
+// TODO: When user list is implemented, add Pencil, Trash2 icons and Edit/Delete dialogs and state.
 
 interface DisplayUser {
   id: string;
@@ -16,21 +17,26 @@ interface DisplayUser {
   collegeName?: string; 
 }
 
-async function getMockUsers(): Promise<DisplayUser[]> {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return [
-    { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'ADMIN' },
-    { id: '2', name: 'College Admin Main', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', collegeName: 'Global Tech' },
-  ];
-}
+// async function getMockUsers(): Promise<DisplayUser[]> {
+//   await new Promise(resolve => setTimeout(resolve, 500));
+//   return [
+//     { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'ADMIN' },
+//     { id: '2', name: 'College Admin Main', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', collegeName: 'Global Tech' },
+//   ];
+// }
 
 
 export default function ManageUsersPage() {
-  const [users, setUsers] = React.useState<DisplayUser[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true); // Kept for potential future use
+  // const [users, setUsers] = React.useState<DisplayUser[]>([]);
+  // const [isLoading, setIsLoading] = React.useState(true); 
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
+  // TODO: Add state for Edit/Delete dialogs for users when list is implemented
+  // const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  // const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  // const [currentUserToEdit, setCurrentUserToEdit] = React.useState<DisplayUser | null>(null);
+  // const [userToDelete, setUserToDelete] = React.useState<DisplayUser | null>(null);
 
-  // Static mock, so useEffect for loading is commented out.
+
   // React.useEffect(() => {
   //   async function loadUsers() {
   //     setIsLoading(true);
@@ -44,6 +50,8 @@ export default function ManageUsersPage() {
   const handleUserCreated = () => {
     console.log("User created, if user list was dynamic, it would refresh.");
   };
+  
+  // TODO: Implement handleUserUpdated, openEditDialog, openDeleteDialog, confirmDelete for users
 
   return (
     <div className="space-y-6">
@@ -90,10 +98,26 @@ export default function ManageUsersPage() {
             <p className="text-sm text-muted-foreground mt-1">
               Creating users via the "Add User" button is functional with a mock backend.
             </p>
-             {/* TODO: Implement dynamic user list, filters, and editing capabilities */}
+             {/* TODO: Implement dynamic user list with Edit/Delete buttons, filters, and editing capabilities. */}
+             {/* When user list is implemented, map through users and include Edit/Delete buttons:
+                <div className="flex space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(user)}>
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </Button>
+                </div>
+             */}
           </div>
         </CardContent>
       </Card>
+      
+      {/* TODO: Add Edit User Dialog here, similar to other pages */}
+      {/* {currentUserToEdit && ( ... )} */}
+
+      {/* TODO: Add Delete User AlertDialog here, similar to other pages */}
+      {/* {userToDelete && ( ... )} */}
     </div>
   );
 }
