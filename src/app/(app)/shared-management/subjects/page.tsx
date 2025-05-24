@@ -77,7 +77,7 @@ export default function ManageSubjectsPage() {
 
   const confirmDelete = async () => {
     if (!subjectToDelete) return;
-    // TODO: Implement actual deleteSubject server action
+    // TODO: Implement actual deleteSubject server action in /lib/actions.ts
     // const result = await deleteSubject(subjectToDelete.subject_id);
     // if (result.success) {
     //   toast({ title: "Subject Deleted", description: `Subject "${subjectToDelete.subject_name}" has been deleted.` });

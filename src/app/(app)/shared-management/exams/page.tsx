@@ -88,7 +88,7 @@ export default function ManageExamsPage() {
 
   const confirmDelete = async () => {
     if (!examToDelete) return;
-    // TODO: Implement actual deleteExam server action
+    // TODO: Implement actual deleteExam server action in /lib/actions.ts
     // const result = await deleteExam(examToDelete.exam_id);
     // if (result.success) {
     //   toast({ title: "Exam Deleted", description: `Exam "${examToDelete.name}" has been deleted.` });

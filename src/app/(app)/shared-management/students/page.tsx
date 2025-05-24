@@ -68,7 +68,7 @@ export default function ManageStudentsPage() {
 
   const confirmDelete = async () => {
     if (!studentToDelete) return;
-    // TODO: Implement actual deleteStudent server action
+    // TODO: Implement actual deleteStudent server action in /lib/actions.ts
     // const result = await deleteStudent(studentToDelete.student_id);
     // if (result.success) {
     //   toast({ title: "Student Deleted", description: `Student "${studentToDelete.full_name}" has been deleted.` });
