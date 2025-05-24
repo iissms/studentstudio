@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from 'react'
@@ -8,7 +9,8 @@ import { Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+// Label component is not directly used, FormLabel is used instead.
+// import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { loginSchema, type LoginFormValues } from '@/schemas/auth'
 import { loginUser } from '@/lib/actions'
@@ -45,8 +47,9 @@ export function LoginForm() {
         })
         // The middleware should handle redirection based on the cookie being set.
         // Forcing a router refresh ensures middleware runs and layout re-evaluates.
-        router.refresh() 
-        // router.push('/dashboard') // Or let middleware handle it
+        // router.refresh() 
+        // Explicitly navigate to dashboard. Middleware will guard this route.
+        router.replace('/dashboard')
       } else {
         toast({
           title: 'Login Failed',
