@@ -1,3 +1,4 @@
+
 export type UserRole = "ADMIN" | "COLLEGE_ADMIN" | "TEACHER" | "STUDENT" | "GUEST"
 
 export interface User {
@@ -16,4 +17,13 @@ export interface NavItem {
   label?: string
   description?: string
   roles?: UserRole[] // Roles that can see this nav item
+}
+
+// Added College interface for shared use
+export interface College {
+  college_id: number;
+  name: string;
+  address: string; // Kept for completeness, though not strictly needed by CreateUserForm
+  email?: string;
+  phone?: string;
 }
