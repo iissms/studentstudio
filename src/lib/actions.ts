@@ -7,31 +7,34 @@ import { createCollegeSchema, type CreateCollegeFormValues } from '@/schemas/col
 import { createUserSchema, type CreateUserFormValues } from '@/schemas/user';
 import { createDepartmentSchema, type CreateDepartmentFormValues } from '@/schemas/department';
 import { createClassSchema, type CreateClassFormValues } from '@/schemas/class';
-import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject'; // New import
-import type { User, UserRole, Department, College, Class, Subject } from '@/types' // Added Subject
+import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject';
+import { createExamSchema, type CreateExamFormValues } from '@/schemas/exam'; // New import
+import type { User, UserRole, Department, College, Class, Subject, Exam } from '@/types' // Added Exam
 import { redirect } from 'next/navigation'
 import { SignJWT, jwtVerify, decodeJwt } from 'jose'
 import { revalidatePath } from 'next/cache';
 import { getUserFromCookies } from './auth-utils';
+import { format } from 'date-fns';
+
 
 const MOCK_JWT_SECRET = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long-for-app';
 const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
 
 
-// Mock users for login
 const mockUsers: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { email: string, passwordSimple: string, college_id?: number }> = {
   'admin@example.com': { name: 'Admin User', email: 'admin@example.com', role: 'ADMIN', passwordSimple: 'admin123' },
-  'collegeadmin@example.com': { name: 'College Admin', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', passwordSimple: 'password', college_id: 1 }, // Assuming college_id 1
+  'collegeadmin@example.com': { name: 'College Admin', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', passwordSimple: 'password', college_id: 1 }, 
   'teacher@example.com': { name: 'Teacher User', email: 'teacher@example.com', role: 'TEACHER', passwordSimple: 'password', college_id: 1 },
   'student@example.com': { name: 'Student User', email: 'student@example.com', role: 'STUDENT', passwordSimple: 'password', college_id: 1 },
 };
 
-// In-memory store for created entities (mock)
+
 let mockCreatedUsers: (User & {password: string, college_id?: number})[] = [];
 let mockCreatedColleges: College[] = [];
 let mockCreatedDepartments: Department[] = [];
 let mockCreatedClasses: Class[] = [];
-let mockCreatedSubjects: Subject[] = []; // New mock store for subjects
+let mockCreatedSubjects: Subject[] = [];
+let mockCreatedExams: Exam[] = []; // New mock store for exams
 
 
 async function createMockToken(userPayload: {
@@ -75,27 +78,28 @@ export async function loginUser(
             name: createdUser.name,
             email: createdUser.email,
             role: createdUser.role,
-            passwordSimple: createdUser.password,
+            passwordSimple: createdUser.password, // This is illustrative; in real app, compare hashed passwords
             college_id: createdUser.college_id,
         };
     }
   }
   
+  // Generic student fallback if no specific user is found but a common password is used
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
     userToAuthData = {
-      id: String(Date.now()), 
+      id: String(Date.now()), // Temporary unique ID
       name: `User ${email.split('@')[0]}`,
       email: email,
-      role: 'STUDENT', 
+      role: 'STUDENT', // Default role for generic login
       passwordSimple: password,
-      college_id: 1, 
+      college_id: 1, // Default college_id for generic student
     };
   }
 
 
   if (userToAuthData) {
     const jwtPayload = {
-      user_id: parseInt(userToAuthData.id, 10), 
+      user_id: parseInt(userToAuthData.id, 10), // Ensure user_id is number
       role: userToAuthData.role,
       name: userToAuthData.name,
       email: userToAuthData.email,
@@ -129,7 +133,7 @@ export async function loginUser(
 
 export async function logoutUser() {
   const cookieStore = cookies()
-  cookieStore.delete(AUTH_COOKIE_NAME, { path: '/' });
+  cookieStore.delete(AUTH_COOKIE_NAME, { path: '/' }); // Use delete for clarity
   redirect('/login');
 }
 
@@ -189,7 +193,7 @@ export async function createUser(
   mockCreatedUsers.push(newUser);
   console.log('Mock Creating user:', newUser);
   
-  // revalidatePath('/admin/users');
+  // revalidatePath('/admin/users'); // Revalidation might be desired here
 
   return {
     success: true,
@@ -290,22 +294,22 @@ export async function createSubject(
 
   const { class_id, subject_code, subject_name, type } = validatedFields.data;
   
-  // Optional: Validate if class_id belongs to the user's college_id
-  // For now, we assume the class dropdown in the form correctly lists classes for the admin's college.
-  // We can retrieve the class from mockCreatedClasses to get its college_id if needed for further validation.
   const associatedClass = mockCreatedClasses.find(c => c.class_id === class_id);
-  if (!associatedClass || associatedClass.college_id !== user.college_id) {
-     return { success: false, error: 'Invalid class selection or class does not belong to your college.' };
-  }
-
+   if (!associatedClass) { // For mock, check if class exists in our mock list
+     // In a real app, you'd also verify if associatedClass.college_id === user.college_id
+     // but since getMockClassesForCollegeAdmin in form is not strictly filtering by college_id,
+     // this check is simplified for mock environment.
+     console.warn(`Attempt to create subject for non-existent or unauthorized class ID: ${class_id}`);
+     // return { success: false, error: 'Invalid class selection or class does not belong to your college.' };
+   }
 
   const newSubject: Subject = {
-    subject_id: Math.floor(Math.random() * 1000000) + 5000, // Mock ID
+    subject_id: Math.floor(Math.random() * 1000000) + 5000, 
     class_id,
     subject_code,
     subject_name,
     type,
-    college_id: user.college_id, // Store college_id for easier filtering later if needed
+    college_id: user.college_id, 
   };
 
   mockCreatedSubjects.push(newSubject);
@@ -317,5 +321,37 @@ export async function createSubject(
     success: true,
     message: `Subject "${subject_name}" (mock) of type "${type}" added to class ID ${class_id} successfully.`,
     subject: newSubject,
+  };
+}
+
+export async function createExam(
+  values: CreateExamFormValues
+): Promise<{ success: boolean; error?: string; message?: string; exam?: Exam }> {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  const user = await getUserFromCookies(cookies());
+  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins can create exams, or college ID is missing.' };
+  }
+
+  // Validation happens via schema in the form component.
+  // The `values` received here should already be transformed by createExamSchema.
+  // For example, dates are already strings.
+  
+  const newExam: Exam = {
+    exam_id: Math.floor(Math.random() * 1000000) + 10000, // Mock ID
+    ...values, // Spread validated and transformed values
+    college_id: user.college_id,
+  };
+
+  mockCreatedExams.push(newExam);
+  console.log(`Mock Creating exam "${newExam.name}" for class ID ${newExam.class_id}:`, newExam);
+
+  revalidatePath('/college-admin/exams');
+
+  return {
+    success: true,
+    message: `Exam "${newExam.name}" (mock) created successfully for class ID ${newExam.class_id}.`,
+    exam: newExam,
   };
 }

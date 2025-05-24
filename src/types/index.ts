@@ -6,7 +6,7 @@ export interface User {
   name: string | null
   email: string | null
   role: UserRole
-  college_id?: number; // Added for College Admin context
+  college_id?: number; 
 }
 
 export interface NavItem {
@@ -17,7 +17,7 @@ export interface NavItem {
   external?: boolean
   label?: string
   description?: string
-  roles?: UserRole[] // Roles that can see this nav item
+  roles?: UserRole[] 
 }
 
 export interface College {
@@ -31,24 +31,36 @@ export interface College {
 export interface Department {
   department_id: number;
   name: string;
-  college_id?: number; // To associate with a college
+  college_id?: number; 
 }
 
 export interface Class {
   class_id: number;
   class_name: string;
   department_id: number;
-  department_name?: string; // For display purposes
+  department_name?: string; 
   academic_year: string;
-  college_id?: number; // To associate with a college
+  college_id?: number; 
 }
 
 export interface Subject {
   subject_id: number;
   class_id: number;
-  class_name?: string; // For display purposes
+  class_name?: string; 
   subject_code: string;
   subject_name: string;
-  type: "Theory" | "Practical" | "Other"; // Or a more generic string if preferred
+  type: "Theory" | "Practical" | "Other"; 
+  college_id?: number; 
+}
+
+export interface Exam {
+  exam_id: number;
+  class_id: number;
+  class_name?: string; // For display
+  name: string;
+  marks: number; // Total marks
+  min_marks: number; // Minimum passing marks
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
   college_id?: number; // To associate with a college (via class)
 }
