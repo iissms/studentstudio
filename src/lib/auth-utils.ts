@@ -5,10 +5,10 @@ import { decodeJwt } from 'jose'
 
 interface JwtPayload {
   user_id: number; // Expecting numeric user_id from JWT
-  role: string; 
+  role: string;
   college_id?: number;
-  name?: string; 
-  email?: string; 
+  name?: string;
+  email?: string;
   iat?: number;
   exp?: number;
 }
@@ -27,7 +27,7 @@ function mapJwtRoleToUserRole(jwtRole: string): UserRole | null {
   if (roleMap[upperCaseJwtRole]) {
     return roleMap[upperCaseJwtRole];
   }
-  
+
   // Fallback for direct match if not in map (e.g. "GUEST")
   const validRoles: UserRole[] = ["ADMIN", "COLLEGE_ADMIN", "TEACHER", "STUDENT", "GUEST"];
   if (validRoles.includes(upperCaseJwtRole as UserRole)) {
@@ -35,7 +35,7 @@ function mapJwtRoleToUserRole(jwtRole: string): UserRole | null {
   }
 
   console.warn(`Unknown role from JWT: ${jwtRole}`);
-  return null; 
+  return null;
 }
 
 
@@ -61,9 +61,10 @@ export async function getUserFromCookies(
 
     return {
       id: String(decodedPayload.user_id), // Convert numeric user_id from JWT to string for User.id
-      name: decodedPayload.name || null, 
-      email: decodedPayload.email || null, 
+      name: decodedPayload.name || null,
+      email: decodedPayload.email || null,
       role: userRole,
+      college_id: decodedPayload.college_id, // Ensure college_id is passed
     }
   } catch (error) {
     console.error('Failed to decode JWT or invalid token:', error)
