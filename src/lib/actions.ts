@@ -3,18 +3,40 @@
 
 import { cookies } from 'next/headers'
 import { loginSchema, type LoginFormValues } from '@/schemas/auth'
-import type { User } from '@/types'
+import type { User, UserRole } from '@/types'
 import { redirect } from 'next/navigation'
-import type { SignJWT, JWTPayload } from 'jose' // Ensure jose types are available if used for signing, though not directly here.
+import { SignJWT } from 'jose'
 
-// It's better to read env variables inside the function if they might not be available at module load time in all environments.
-// However, for server actions, they are generally available.
+// Mock users
+const mockUsers: Record<string, Omit<User, 'id' | 'email'> & { email: string, passwordSimple: string }> = {
+  'admin@example.com': { name: 'Admin User', email: 'admin@example.com', role: 'ADMIN', passwordSimple: 'admin123' }, // Specific password for admin
+  'collegeadmin@example.com': { name: 'College Admin', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', passwordSimple: 'password' },
+  'teacher@example.com': { name: 'Teacher User', email: 'teacher@example.com', role: 'TEACHER', passwordSimple: 'password' },
+  'student@example.com': { name: 'Student User', email: 'student@example.com', role: 'STUDENT', passwordSimple: 'password' },
+};
+
+// Function to create a mock JWT
+async function createMockToken(userPayload: {
+  user_id: number; // JWTs often use numeric IDs
+  role: UserRole;
+  name: string | null;
+  email: string | null;
+}): Promise<string> {
+  const MOCK_JWT_SECRET = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long'; // Ensure it's at least 32 chars for HS256
+  const secret = new TextEncoder().encode(MOCK_JWT_SECRET);
+  const alg = 'HS256';
+
+  return await new SignJWT({ ...userPayload })
+    .setProtectedHeader({ alg })
+    .setIssuedAt()
+    .setExpirationTime('7d') // Token valid for 7 days
+    .sign(secret);
+}
 
 export async function loginUser(
   values: LoginFormValues
 ): Promise<{ success: boolean; error?: string; user?: User }> {
   const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token'
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5007/api'
 
   const validatedFields = loginSchema.safeParse(values)
 
@@ -24,61 +46,62 @@ export async function loginUser(
 
   const { email, password } = validatedFields.data
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    })
+  let userToAuth: (Omit<User, 'id'> & { id: string }) | null = null;
 
-    if (!response.ok) {
-      // Attempt to parse error response from backend
-      let errorData = { message: `Login failed with status: ${response.status}` };
-      try {
-        errorData = await response.json();
-      } catch (e) {
-        // Backend didn't return JSON or it was malformed
-        console.error('Could not parse error response JSON:', e);
-      }
-      console.error('Login API error:', response.status, errorData);
-      return {
-        success: false,
-        error: errorData.message || `Login failed. Status: ${response.status}`,
-      }
-    }
+  const specificMockUser = mockUsers[email];
 
-    // Backend is expected to set the HttpOnly cookie.
-    // The token might be in the response body (as per user's example), but we rely on the HttpOnly cookie being set by the backend.
-    // const responseData = await response.json(); // Contains { token: "..." }
-    // We don't need to manually set the cookie here if the backend does it via Set-Cookie header.
-
-    return { success: true }
-  } catch (error) {
-    console.error('Login request failed:', error)
-    if (error instanceof Error) {
-        return { success: false, error: error.message || 'An unexpected network error occurred.' };
-    }
-    return { success: false, error: 'An unexpected error occurred during login.' }
+  if (specificMockUser && specificMockUser.passwordSimple === password) {
+    userToAuth = { ...specificMockUser, id: String(Object.keys(mockUsers).indexOf(email) + 1) }; // Assign a mock numeric ID string
+  } else if (!specificMockUser && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
+    // Fallback for any other email with a generic password, treat as STUDENT
+    // This covers the "student@example.com" / "password" case if not explicitly in mockUsers,
+    // or any other new email entered with "password".
+    userToAuth = {
+      id: String(Date.now()), // Generate a unique mock ID
+      name: `User ${email.split('@')[0]}`,
+      email: email,
+      role: 'STUDENT',
+    };
   }
+
+  if (userToAuth) {
+    // Prepare payload for mock JWT
+    const jwtPayload = {
+      user_id: parseInt(userToAuth.id, 10) || Date.now(), // Ensure user_id is a number
+      role: userToAuth.role,
+      name: userToAuth.name,
+      email: userToAuth.email,
+    };
+
+    try {
+      const token = await createMockToken(jwtPayload);
+      cookies().set(AUTH_COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+      });
+      // Return the User object structure expected by the frontend
+      return { success: true, user: {
+        id: userToAuth.id,
+        name: userToAuth.name,
+        email: userToAuth.email,
+        role: userToAuth.role
+      }};
+    } catch (error) {
+      console.error('Failed to create mock token:', error);
+      return { success: false, error: 'Failed to prepare session.' };
+    }
+  }
+
+  return { success: false, error: 'Invalid credentials.' }
 }
 
 export async function logoutUser() {
   const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token'
-  
-  // Use cookies().delete() to remove the cookie.
-  // This is a more direct method than setting an expired cookie.
-  // The options should match how the cookie was set, especially 'path'.
   cookies().delete(AUTH_COOKIE_NAME, {
     path: '/',
-    // httpOnly and secure flags are not specified for delete by default,
-    // but path is crucial. If domain or secure was used when setting,
-    // they might be needed here too for some browsers/scenarios.
-    // For HttpOnly cookies, the browser handles deletion based on name, path, domain.
   });
-
-  // Redirect to login page after logout
   redirect('/login')
 }
-

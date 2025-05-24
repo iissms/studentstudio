@@ -4,39 +4,38 @@ import type { User, UserRole } from '@/types'
 import { decodeJwt } from 'jose'
 
 interface JwtPayload {
-  user_id: number;
-  role: string; // Role from JWT, e.g., "CollegeAdmin"
+  user_id: number; // Expecting numeric user_id from JWT
+  role: string; 
   college_id?: number;
-  name?: string; // Optional: if your JWT includes name
-  email?: string; // Optional: if your JWT includes email
+  name?: string; 
+  email?: string; 
   iat?: number;
   exp?: number;
 }
 
-// Helper to map role strings from JWT to UserRole enum/type
-// Ensures the role is one of the predefined UserRole types.
 function mapJwtRoleToUserRole(jwtRole: string): UserRole | null {
   const upperCaseJwtRole = jwtRole.toUpperCase();
-  const validRoles: UserRole[] = ["ADMIN", "COLLEGE_ADMIN", "TEACHER", "STUDENT", "GUEST"];
-  
-  if (validRoles.includes(upperCaseJwtRole as UserRole)) {
-    // If the backend sends "CollegeAdmin", and UserRole includes "COLLEGE_ADMIN",
-    // this direct cast is okay after validation.
-    // Adjust this mapping if backend roles differ significantly in naming/casing.
-    if (upperCaseJwtRole === "COLLEGEADMIN") return "COLLEGE_ADMIN"; // example specific mapping if needed
-    return upperCaseJwtRole as UserRole;
+  // Ensure mapping matches UserRole type and potential JWT role strings
+  const roleMap: Record<string, UserRole> = {
+    "ADMIN": "ADMIN",
+    "COLLEGEADMIN": "COLLEGE_ADMIN", // If JWT sends "CollegeAdmin"
+    "COLLEGE_ADMIN": "COLLEGE_ADMIN", // If JWT sends "COLLEGE_ADMIN"
+    "TEACHER": "TEACHER",
+    "STUDENT": "STUDENT",
+  };
+
+  if (roleMap[upperCaseJwtRole]) {
+    return roleMap[upperCaseJwtRole];
   }
   
-  // Handle cases like "Admin" vs "ADMIN" by checking common variations or logging.
-  // For now, a direct check based on UserRole values.
-  // Example: if backend sends "Admin" and UserRole is "ADMIN"
-  if (jwtRole === "Admin" && validRoles.includes("ADMIN")) return "ADMIN";
-  if (jwtRole === "CollegeAdmin" && validRoles.includes("COLLEGE_ADMIN")) return "COLLEGE_ADMIN";
-  if (jwtRole === "Teacher" && validRoles.includes("TEACHER")) return "TEACHER";
-  if (jwtRole === "Student" && validRoles.includes("STUDENT")) return "STUDENT";
+  // Fallback for direct match if not in map (e.g. "GUEST")
+  const validRoles: UserRole[] = ["ADMIN", "COLLEGE_ADMIN", "TEACHER", "STUDENT", "GUEST"];
+  if (validRoles.includes(upperCaseJwtRole as UserRole)) {
+    return upperCaseJwtRole as UserRole;
+  }
 
   console.warn(`Unknown role from JWT: ${jwtRole}`);
-  return null; // Or default to GUEST, or throw an error
+  return null; 
 }
 
 
@@ -51,6 +50,7 @@ export async function getUserFromCookies(
   }
 
   try {
+    // Use jose to decode the JWT
     const decodedPayload = decodeJwt(tokenCookie.value) as JwtPayload;
 
     const userRole = mapJwtRoleToUserRole(decodedPayload.role);
@@ -59,12 +59,10 @@ export async function getUserFromCookies(
       return null;
     }
 
-    // The JWT example payload has user_id (number), role (string).
-    // User type expects id (string), name (string|null), email (string|null), role (UserRole).
     return {
-      id: String(decodedPayload.user_id), // Convert number to string for User.id
-      name: decodedPayload.name || null, // Use name from JWT if present, otherwise null
-      email: decodedPayload.email || null, // Use email from JWT if present, otherwise null
+      id: String(decodedPayload.user_id), // Convert numeric user_id from JWT to string for User.id
+      name: decodedPayload.name || null, 
+      email: decodedPayload.email || null, 
       role: userRole,
     }
   } catch (error) {
