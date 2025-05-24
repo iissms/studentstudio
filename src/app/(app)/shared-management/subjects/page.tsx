@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BookCopy, PlusCircle } from "lucide-react";
-import { CreateSubjectForm } from '@/components/college-admin/CreateSubjectForm'; // New form
-import type { Subject, Class } from '@/types'; // Import Subject type
+import { CreateSubjectForm } from '@/components/college-admin/CreateSubjectForm'; 
+import type { Subject, Class } from '@/types'; 
 
-// Mock function to get subjects for display
 async function getMockSubjects(collegeId?: number): Promise<Subject[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 500)); 
   
-  // Placeholder classes for enriching subject data (in a real app, you'd join or fetch this info)
   const mockClasses: Class[] = [
     { class_id: 101, class_name: "1st PUC Science", department_id: 1, academic_year: "2024-2025", college_id: 1 },
     { class_id: 102, class_name: "2nd PUC Commerce", department_id: 3, academic_year: "2024-2025", college_id: 1 },
@@ -40,8 +38,7 @@ export default function ManageSubjectsPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
-  // TODO: In a real app, get the logged-in college admin's college_id from session/context
-  const collegeAdminCollegeId = 1; // Placeholder
+  const collegeAdminCollegeId = 1; 
 
   React.useEffect(() => {
     async function loadSubjects() {
@@ -54,7 +51,6 @@ export default function ManageSubjectsPage() {
   }, [collegeAdminCollegeId]);
 
   const handleSubjectCreated = () => {
-    // For now, with static mock getMockSubjects, this won't auto-refresh the list.
     console.log("Subject created, ideally re-fetch or update list.");
   };
 
@@ -62,7 +58,9 @@ export default function ManageSubjectsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manage Subjects</h1>
+          <h1 className="text-3xl font-bold tracking-tight inline-flex items-center">
+            <BookCopy className="mr-3 h-8 w-8" /> Manage Subjects
+          </h1>
           <p className="text-muted-foreground">
             Add subjects and assign them to classes.
           </p>
@@ -93,11 +91,14 @@ export default function ManageSubjectsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-             <p>Loading subjects...</p>
+             <p className="text-center text-muted-foreground py-4">Loading subjects...</p>
           ) : subjects.length > 0 ? (
             <ul className="space-y-4">
               {subjects.map((sub) => (
-                <li key={sub.subject_id} className="p-4 border rounded-md shadow-sm">
+                <li 
+                  key={sub.subject_id} 
+                  className="p-4 border rounded-md shadow-sm bg-card hover:shadow-lg transition-shadow duration-200"
+                >
                   <h3 className="text-lg font-semibold">{sub.subject_name} ({sub.subject_code})</h3>
                   <p className="text-sm text-muted-foreground">ID: {sub.subject_id} | Type: {sub.type}</p>
                   <p className="text-sm text-muted-foreground">Class: {sub.class_name} (ID: {sub.class_id})</p>
@@ -106,7 +107,13 @@ export default function ManageSubjectsPage() {
               ))}
             </ul>
           ) : (
-            <p>No subjects found. Click "Add Subject" to create one.</p>
+             <div className="flex flex-col items-center justify-center py-12 text-center">
+                <BookCopy className="h-16 w-16 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">No Subjects Found</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                    Click "Add Subject" to create one.
+                </p>
+            </div>
           )}
         </CardContent>
       </Card>

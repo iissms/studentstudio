@@ -1,20 +1,19 @@
 
-'use client'; // Needs to be client component to manage dialog state
+'use client'; 
 
 import * as React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserPlus } from "lucide-react";
-import { CreateUserForm } from '@/components/admin/CreateUserForm'; // Import the new form
+import { UserPlus, Users } from "lucide-react"; // Added Users
+import { CreateUserForm } from '@/components/admin/CreateUserForm';
 
-// Mock user data - in a real app, this would be fetched
 interface DisplayUser {
   id: string;
   name: string;
   email: string;
   role: string;
-  collegeName?: string; // Optional: if displaying college info
+  collegeName?: string; 
 }
 
 async function getMockUsers(): Promise<DisplayUser[]> {
@@ -22,17 +21,16 @@ async function getMockUsers(): Promise<DisplayUser[]> {
   return [
     { id: '1', name: 'Admin User', email: 'admin@example.com', role: 'ADMIN' },
     { id: '2', name: 'College Admin Main', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', collegeName: 'Global Tech' },
-    // Add more mock users or fetch from the mockCreatedUsers in actions.ts (more complex for client)
   ];
 }
 
 
 export default function ManageUsersPage() {
   const [users, setUsers] = React.useState<DisplayUser[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(true); // Kept for potential future use
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false);
 
-  // For now, the user list is static mock.
+  // Static mock, so useEffect for loading is commented out.
   // React.useEffect(() => {
   //   async function loadUsers() {
   //     setIsLoading(true);
@@ -44,17 +42,16 @@ export default function ManageUsersPage() {
   // }, []);
 
   const handleUserCreated = () => {
-    // In a real app with an API, you might re-fetch users here or optimistically update.
-    // For now, with mocks, this doesn't auto-refresh the list shown below.
     console.log("User created, if user list was dynamic, it would refresh.");
-    // To see new users, the `getMockUsers` would need to be updated or integrate with `mockCreatedUsers` from actions.
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manage Users</h1>
+          <h1 className="text-3xl font-bold tracking-tight inline-flex items-center">
+            <Users className="mr-3 h-8 w-8" /> Manage Users
+          </h1>
           <p className="text-muted-foreground">
             Assign users to colleges and set their roles. (Currently supports creating College Admins)
           </p>
@@ -81,26 +78,20 @@ export default function ManageUsersPage() {
       <Card>
         <CardHeader>
           <CardTitle>User List</CardTitle>
-          <CardDescription>A list of users in the system. (Static Mock Data)</CardDescription>
+          <CardDescription>A list of users in the system.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* {isLoading ? (
-             <p>Loading users...</p>
-          ) : users.length > 0 ? (
-            <ul className="space-y-4">
-              {users.map((user) => (
-                <li key={user.id} className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-semibold">{user.name} ({user.role})</h3>
-                  <p className="text-sm text-muted-foreground">Email: {user.email}</p>
-                  {user.collegeName && <p className="text-sm text-muted-foreground">College: {user.collegeName}</p> }
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No users found. Click "Add User" to create one.</p>
-          )} */}
-          <p className="text-muted-foreground">User list display is currently a placeholder. Creating users is functional with mock backend.</p>
-          {/* TODO: Implement dynamic user list, filters, and editing capabilities */}
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Users className="h-16 w-16 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium text-muted-foreground">User List Coming Soon</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              The functionality to display and manage the list of users is currently under development.
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Creating users via the "Add User" button is functional with a mock backend.
+            </p>
+             {/* TODO: Implement dynamic user list, filters, and editing capabilities */}
+          </div>
         </CardContent>
       </Card>
     </div>

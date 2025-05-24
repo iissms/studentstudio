@@ -6,14 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Library, PlusCircle } from "lucide-react";
-import { CreateClassForm } from '@/components/college-admin/CreateClassForm'; // New form
-import type { Class, Department } from '@/types'; // Import Class type
+import { CreateClassForm } from '@/components/college-admin/CreateClassForm'; 
+import type { Class, Department } from '@/types'; 
 
-// Mock function to get classes for display
-// In a real app, this would fetch from an API, likely based on the logged-in admin's college_id
 async function getMockClasses(collegeId?: number): Promise<Class[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-  // Placeholder departments for enriching class data (in a real app, you'd join or fetch this info)
+  await new Promise(resolve => setTimeout(resolve, 500)); 
   const mockDepartments: Department[] = [
     { department_id: 1, name: "Science Department", college_id: 1 },
     { department_id: 2, name: "Humanities Department", college_id: 1 },
@@ -28,7 +25,7 @@ async function getMockClasses(collegeId?: number): Promise<Class[]> {
   ];
 
   return allClasses
-    .filter(c => collegeId ? c.college_id === collegeId : true) // Filter by collegeId if provided
+    .filter(c => collegeId ? c.college_id === collegeId : true) 
     .map(c => ({
       ...c,
       department_name: mockDepartments.find(d => d.department_id === c.department_id)?.name || "Unknown Dept."
@@ -40,8 +37,7 @@ export default function ManageClassesPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
-  // TODO: In a real app, get the logged-in college admin's college_id from session/context
-  const collegeAdminCollegeId = 1; // Placeholder
+  const collegeAdminCollegeId = 1; 
 
   React.useEffect(() => {
     async function loadClasses() {
@@ -51,21 +47,19 @@ export default function ManageClassesPage() {
       setIsLoading(false);
     }
     loadClasses();
-  }, [collegeAdminCollegeId]); // Reload if collegeId changes (not relevant for current mock)
+  }, [collegeAdminCollegeId]); 
 
   const handleClassCreated = () => {
-    // In a real app, you might re-fetch classes here or optimistically update.
-    // For now, with static mock getMockClasses, this won't auto-refresh the list with new entries.
     console.log("Class created, ideally re-fetch or update list.");
-    // To see newly created classes reflected, getMockClasses would need to be dynamic
-    // or integrate with the mockCreatedClasses array from actions.ts
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manage Classes</h1>
+          <h1 className="text-3xl font-bold tracking-tight inline-flex items-center">
+            <Library className="mr-3 h-8 w-8" /> Manage Classes
+          </h1>
           <p className="text-muted-foreground">
             Create and manage classes, linking them to departments for the academic year.
           </p>
@@ -96,11 +90,14 @@ export default function ManageClassesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-             <p>Loading classes...</p>
+             <p className="text-center text-muted-foreground py-4">Loading classes...</p>
           ) : classes.length > 0 ? (
             <ul className="space-y-4">
               {classes.map((cls) => (
-                <li key={cls.class_id} className="p-4 border rounded-md shadow-sm">
+                <li 
+                  key={cls.class_id} 
+                  className="p-4 border rounded-md shadow-sm bg-card hover:shadow-lg transition-shadow duration-200"
+                >
                   <h3 className="text-lg font-semibold">{cls.class_name}</h3>
                   <p className="text-sm text-muted-foreground">ID: {cls.class_id}</p>
                   <p className="text-sm text-muted-foreground">Department: {cls.department_name} (ID: {cls.department_id})</p>
@@ -110,7 +107,13 @@ export default function ManageClassesPage() {
               ))}
             </ul>
           ) : (
-            <p>No classes found. Click "Add Class" to create one.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Library className="h-16 w-16 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">No Classes Found</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                    Click "Add Class" to create one.
+                </p>
+            </div>
           )}
         </CardContent>
       </Card>

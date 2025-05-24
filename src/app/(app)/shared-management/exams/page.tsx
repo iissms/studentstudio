@@ -1,5 +1,5 @@
 
-'use client'; // Needs to be client component to manage dialog state
+'use client'; 
 
 import * as React from 'react';
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Newspaper, PlusCircle, BookOpenCheck } from "lucide-react";
 import { format } from 'date-fns';
 import { CreateExamForm } from '@/components/college-admin/CreateExamForm'; 
-import { AssignSubjectsToExamForm } from '@/components/college-admin/AssignSubjectsToExamForm'; // New form
+import { AssignSubjectsToExamForm } from '@/components/college-admin/AssignSubjectsToExamForm'; 
 import type { Exam } from '@/types'; 
 
-// Mock function to get exams for display
 async function getMockExams(collegeId?: number): Promise<Exam[]> {
   await new Promise(resolve => setTimeout(resolve, 500)); 
   const mockClasses = [
@@ -25,9 +24,6 @@ async function getMockExams(collegeId?: number): Promise<Exam[]> {
     { exam_id: 303, class_id: 101, name: "Chemistry Final Practical", marks: 30, min_marks: 10, start_date: "2025-03-10", end_date: "2025-03-12", college_id: 1 },
   ];
   
-  // In a real app, newly created exams from `mockCreatedExams` in actions.ts should also be fetched here.
-  // For this mock, we are only showing the static list above.
-
   return allExams
     .filter(e => collegeId ? e.college_id === collegeId : true)
     .map(e => ({
@@ -44,9 +40,7 @@ export default function ManageExamsPage() {
   const [isAssignSubjectsDialogOpen, setIsAssignSubjectsDialogOpen] = React.useState(false);
   const [currentExamForAssignment, setCurrentExamForAssignment] = React.useState<Exam | null>(null);
 
-
-  // TODO: In a real app, get the logged-in college admin's college_id
-  const collegeAdminCollegeId = 1; // Placeholder
+  const collegeAdminCollegeId = 1; 
 
   React.useEffect(() => {
     async function loadExams() {
@@ -59,15 +53,11 @@ export default function ManageExamsPage() {
   }, [collegeAdminCollegeId]);
 
   const handleExamCreated = () => {
-    // For now, with static mock getMockExams, this won't auto-refresh the list.
     console.log("Exam created, ideally re-fetch or update list.");
-    // To see new exams, getMockExams would need to be dynamic or merge with `mockCreatedExams` from actions.ts
-    // For demo purposes, we could re-call loadExams() to see changes IF mock data source was mutable and shared.
   };
 
   const handleSubjectsAssigned = () => {
     console.log("Subjects assigned to exam, ideally re-fetch or update exam details.");
-    // Similar to above, to see changes to `assigned_subject_ids` in the list, `getMockExams` would need to reflect this.
   }
 
   const openAssignSubjectsDialog = (exam: Exam) => {
@@ -79,7 +69,9 @@ export default function ManageExamsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manage Exams</h1>
+          <h1 className="text-3xl font-bold tracking-tight inline-flex items-center">
+            <Newspaper className="mr-3 h-8 w-8" /> Manage Exams
+          </h1>
           <p className="text-muted-foreground">
             Create exams for classes and assign subjects to them.
           </p>
@@ -109,11 +101,14 @@ export default function ManageExamsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-             <p>Loading exams...</p>
+             <p className="text-center text-muted-foreground py-4">Loading exams...</p>
           ) : exams.length > 0 ? (
             <ul className="space-y-4">
               {exams.map((exam) => (
-                <li key={exam.exam_id} className="p-4 border rounded-md shadow-sm">
+                <li 
+                  key={exam.exam_id} 
+                  className="p-4 border rounded-md shadow-sm bg-card hover:shadow-lg transition-shadow duration-200"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-semibold">{exam.name}</h3>
@@ -138,7 +133,13 @@ export default function ManageExamsPage() {
               ))}
             </ul>
           ) : (
-            <p>No exams found. Click "Create Exam" to add one.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Newspaper className="h-16 w-16 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium text-muted-foreground">No Exams Found</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                    Click "Create Exam" to add one.
+                </p>
+            </div>
           )}
         </CardContent>
       </Card>

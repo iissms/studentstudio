@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, University } from "lucide-react"; // Added University
 import { CreateCollegeForm } from '@/components/admin/CreateCollegeForm';
 import { EditCollegeForm } from '@/components/admin/EditCollegeForm';
-import { deleteCollege } from '@/lib/actions'; // Import delete action
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { deleteCollege } from '@/lib/actions'; 
+import { useToast } from '@/hooks/use-toast'; 
 
 interface College {
   college_id: number;
@@ -20,9 +20,6 @@ interface College {
   phone?: string;
 }
 
-// Keep mock fetch function for now.
-// Note: This mock function will not be updated by the createCollege, updateCollege, or deleteCollege actions.
-// The list will only show these initial mock colleges.
 async function getColleges(): Promise<College[]> {
   await new Promise(resolve => setTimeout(resolve, 500));
   return [
@@ -56,23 +53,14 @@ export default function ManageCollegesPage() {
   }, []);
 
   const handleCollegeCreated = () => {
-    // console.log("College created, ideally re-fetch or update list.");
-    // To see newly created colleges, getColleges() would need to be dynamic or loadColleges() would need to fetch from actions.ts's mock DB
-    // For now, we rely on revalidatePath in the action, but getColleges() is static.
     // loadColleges(); // This would only show initial static list
   };
 
   const handleCollegeUpdated = () => {
-    // console.log("College updated, ideally re-fetch or update list.");
     // loadColleges(); // This would only show initial static list
   };
   
   const handleCollegeDeleted = (deletedCollegeId: number) => {
-    // Optimistically update UI or re-fetch.
-    // setColleges(prev => prev.filter(c => c.college_id !== deletedCollegeId));
-    // For now, with static getColleges(), we cannot truly reflect this in the list without a page reload
-    // or making getColleges() dynamic.
-    // loadColleges(); // This would only show initial static list
     toast({ title: "College Deleted", description: "The college has been marked for deletion (mock)." });
   };
 
@@ -106,7 +94,9 @@ export default function ManageCollegesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Manage Colleges</h1>
+          <h1 className="text-3xl font-bold tracking-tight inline-flex items-center">
+            <University className="mr-3 h-8 w-8" /> Manage Colleges
+          </h1>
           <p className="text-muted-foreground">
             View, create, edit, and delete colleges in the system.
           </p>
@@ -137,11 +127,14 @@ export default function ManageCollegesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-             <p>Loading colleges...</p>
+             <p className="text-center text-muted-foreground py-4">Loading colleges...</p>
           ) : colleges.length > 0 ? (
             <ul className="space-y-4">
               {colleges.map((college) => (
-                <li key={college.college_id} className="p-4 border rounded-md shadow-sm">
+                <li 
+                  key={college.college_id} 
+                  className="p-4 border rounded-md shadow-sm bg-card hover:shadow-lg transition-shadow duration-200"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-semibold">{college.name}</h3>
@@ -169,7 +162,13 @@ export default function ManageCollegesPage() {
               ))}
             </ul>
           ) : (
-            <p>No colleges found. Click "Create College" to add one.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <University className="h-16 w-16 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium text-muted-foreground">No Colleges Found</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Click "Create College" to add the first one.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
