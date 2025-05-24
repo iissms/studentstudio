@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { BookCopy, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { CreateSubjectForm } from '@/components/college-admin/CreateSubjectForm'; 
+import { EditSubjectForm } from '@/components/college-admin/EditSubjectForm';
 import type { Subject, Class } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,22 +48,25 @@ export default function ManageSubjectsPage() {
 
   const collegeAdminCollegeId = 1; 
 
+  async function loadSubjects() {
+    setIsLoading(true);
+    const fetchedSubjects = await getMockSubjects(collegeAdminCollegeId);
+    setSubjects(fetchedSubjects);
+    setIsLoading(false);
+  }
+
   React.useEffect(() => {
-    async function loadSubjects() {
-      setIsLoading(true);
-      const fetchedSubjects = await getMockSubjects(collegeAdminCollegeId);
-      setSubjects(fetchedSubjects);
-      setIsLoading(false);
-    }
     loadSubjects();
   }, [collegeAdminCollegeId]);
 
   const handleSubjectCreated = () => {
     console.log("Subject created, ideally re-fetch or update list.");
+    // loadSubjects();
   };
 
   const handleSubjectUpdated = () => {
     console.log("Subject updated, ideally re-fetch or update list.");
+    // loadSubjects();
   };
 
   const openEditDialog = (subject: Subject) => {
@@ -176,9 +180,11 @@ export default function ManageSubjectsPage() {
                 Update the details for {currentSubjectToEdit.subject_name}.
               </DialogDescription>
             </DialogHeader>
-            {/* TODO: Implement EditSubjectForm component and import here */}
-            {/* <EditSubjectForm subjectToEdit={currentSubjectToEdit} onSuccess={handleSubjectUpdated} setDialogOpen={setIsEditDialogOpen} /> */}
-            <p className="py-4 text-center text-muted-foreground">Edit Subject Form will be here.</p>
+            <EditSubjectForm 
+                subjectToEdit={currentSubjectToEdit} 
+                onSuccess={handleSubjectUpdated} 
+                setDialogOpen={setIsEditDialogOpen} 
+            />
           </DialogContent>
         </Dialog>
       )}

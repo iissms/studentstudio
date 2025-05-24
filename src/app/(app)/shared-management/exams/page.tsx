@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Newspaper, PlusCircle, BookOpenCheck, Pencil, Trash2 } from "lucide-react";
 import { format } from 'date-fns';
 import { CreateExamForm } from '@/components/college-admin/CreateExamForm'; 
+import { EditExamForm } from '@/components/college-admin/EditExamForm';
 import { AssignSubjectsToExamForm } from '@/components/college-admin/AssignSubjectsToExamForm'; 
 import type { Exam } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
@@ -49,26 +50,30 @@ export default function ManageExamsPage() {
 
   const collegeAdminCollegeId = 1; 
 
+  async function loadExams() {
+    setIsLoading(true);
+    const fetchedExams = await getMockExams(collegeAdminCollegeId);
+    setExams(fetchedExams);
+    setIsLoading(false);
+  }
+
   React.useEffect(() => {
-    async function loadExams() {
-      setIsLoading(true);
-      const fetchedExams = await getMockExams(collegeAdminCollegeId);
-      setExams(fetchedExams);
-      setIsLoading(false);
-    }
     loadExams();
   }, [collegeAdminCollegeId]);
 
   const handleExamCreated = () => {
     console.log("Exam created, ideally re-fetch or update list.");
+    // loadExams();
   };
 
   const handleExamUpdated = () => {
     console.log("Exam updated, ideally re-fetch or update list.");
+    // loadExams();
   };
 
   const handleSubjectsAssigned = () => {
     console.log("Subjects assigned to exam, ideally re-fetch or update exam details.");
+    // loadExams(); 
   }
 
   const openAssignSubjectsDialog = (exam: Exam) => {
@@ -216,9 +221,11 @@ export default function ManageExamsPage() {
                 Update the details for {currentExamToEdit.name}.
               </DialogDescription>
             </DialogHeader>
-            {/* TODO: Implement EditExamForm component and import here */}
-            {/* <EditExamForm examToEdit={currentExamToEdit} onSuccess={handleExamUpdated} setDialogOpen={setIsEditDialogOpen} /> */}
-            <p className="py-4 text-center text-muted-foreground">Edit Exam Form will be here.</p>
+            <EditExamForm 
+                examToEdit={currentExamToEdit} 
+                onSuccess={handleExamUpdated} 
+                setDialogOpen={setIsEditDialogOpen} 
+            />
           </DialogContent>
         </Dialog>
       )}

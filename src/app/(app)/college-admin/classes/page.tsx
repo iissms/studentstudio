@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Library, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { CreateClassForm } from '@/components/college-admin/CreateClassForm'; 
+import { EditClassForm } from '@/components/college-admin/EditClassForm';
 import type { Class, Department } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
 
@@ -46,13 +47,14 @@ export default function ManageClassesPage() {
 
   const collegeAdminCollegeId = 1; 
 
+  async function loadClasses() {
+    setIsLoading(true);
+    const fetchedClasses = await getMockClasses(collegeAdminCollegeId);
+    setClasses(fetchedClasses);
+    setIsLoading(false);
+  }
+
   React.useEffect(() => {
-    async function loadClasses() {
-      setIsLoading(true);
-      const fetchedClasses = await getMockClasses(collegeAdminCollegeId);
-      setClasses(fetchedClasses);
-      setIsLoading(false);
-    }
     loadClasses();
   }, [collegeAdminCollegeId]); 
 
@@ -176,9 +178,11 @@ export default function ManageClassesPage() {
                 Update the details for {currentClassToEdit.class_name}.
               </DialogDescription>
             </DialogHeader>
-            {/* TODO: Implement EditClassForm component and import here */}
-            {/* <EditClassForm classToEdit={currentClassToEdit} onSuccess={handleClassUpdated} setDialogOpen={setIsEditDialogOpen} /> */}
-            <p className="py-4 text-center text-muted-foreground">Edit Class Form will be here.</p>
+            <EditClassForm 
+                classToEdit={currentClassToEdit} 
+                onSuccess={handleClassUpdated} 
+                setDialogOpen={setIsEditDialogOpen} 
+            />
           </DialogContent>
         </Dialog>
       )}

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { GraduationCap, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { CreateStudentForm } from '@/components/college-admin/CreateStudentForm'; 
+import { EditStudentForm } from '@/components/college-admin/EditStudentForm';
 import type { Student } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -37,23 +38,26 @@ export default function ManageStudentsPage() {
   
   const collegeAdminCollegeId = 1; 
 
-  React.useEffect(() => {
-    async function loadStudents() {
+  async function loadStudents() {
       setIsLoading(true);
       const fetchedStudents = await getMockStudents(collegeAdminCollegeId);
       setStudents(fetchedStudents);
       setIsLoading(false);
     }
+
+  React.useEffect(() => {
     loadStudents();
   }, [collegeAdminCollegeId]);
 
 
   const handleStudentAdded = () => {
     console.log("Student added. To see in list, mock data fetching would need to be dynamic.");
+    // loadStudents(); // Would refetch static mock data
   };
 
   const handleStudentUpdated = () => {
     console.log("Student updated. To see in list, mock data fetching would need to be dynamic.");
+    // loadStudents();
   };
 
   const openEditDialog = (student: Student) => {
@@ -168,9 +172,11 @@ export default function ManageStudentsPage() {
                 Update the details for {currentStudentToEdit.full_name}.
               </DialogDescription>
             </DialogHeader>
-            {/* TODO: Implement EditStudentForm component and import here */}
-            {/* <EditStudentForm studentToEdit={currentStudentToEdit} onSuccess={handleStudentUpdated} setDialogOpen={setIsEditDialogOpen} /> */}
-            <p className="py-4 text-center text-muted-foreground">Edit Student Form will be here.</p>
+            <EditStudentForm 
+                studentToEdit={currentStudentToEdit} 
+                onSuccess={handleStudentUpdated} 
+                setDialogOpen={setIsEditDialogOpen} 
+            />
           </DialogContent>
         </Dialog>
       )}

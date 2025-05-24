@@ -1,0 +1,199 @@
+
+'use client';
+
+import * as React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { createClassSchema, type CreateClassFormValues } from '@/schemas/class';
+import { updateClass } from '@/lib/actions';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DialogFooter } from '@/components/ui/dialog';
+import type { Class, Department } from '@/types';
+
+async function getMockDepartmentsForCollegeAdmin(): Promise<Department[]> {
+  await new Promise(resolve => setTimeout(resolve, 300));
+  return [
+    { department_id: 1, name: "Science Department", college_id: 1 },
+    { department_id: 2, name: "Humanities Department", college_id: 1 },
+    { department_id: 3, name: "Commerce Studies", college_id: 1 },
+    { department_id: 4, name: "Mathematics", college_id: 1 },
+  ];
+}
+
+interface EditClassFormProps {
+  classToEdit: Class;
+  onSuccess?: () => void;
+  setDialogOpen: (open: boolean) => void;
+}
+
+export function EditClassForm({ classToEdit, onSuccess, setDialogOpen }: EditClassFormProps) {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [departments, setDepartments] = React.useState<Department[]>([]);
+  const [isDepartmentsLoading, setIsDepartmentsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function loadDepartments() {
+      setIsDepartmentsLoading(true);
+      const fetchedDepartments = await getMockDepartmentsForCollegeAdmin();
+      setDepartments(fetchedDepartments);
+      setIsDepartmentsLoading(false);
+    }
+    loadDepartments();
+  }, []);
+
+  const form = useForm<CreateClassFormValues>({
+    resolver: zodResolver(createClassSchema),
+    defaultValues: {
+      class_name: classToEdit?.class_name || '',
+      department_id: classToEdit?.department_id || undefined,
+      academic_year: classToEdit?.academic_year || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+    },
+  });
+
+  React.useEffect(() => {
+    if (classToEdit) {
+      form.reset({
+        class_name: classToEdit.class_name,
+        department_id: classToEdit.department_id,
+        academic_year: classToEdit.academic_year,
+      });
+    }
+  }, [classToEdit, form]);
+
+  async function onSubmit(values: CreateClassFormValues) {
+    if (!classToEdit) return;
+    setIsLoading(true);
+    try {
+      const result = await updateClass(classToEdit.class_id, values);
+      if (result.success) {
+        toast({
+          title: 'Class Updated',
+          description: result.message || 'The class has been successfully updated.',
+        });
+        onSuccess?.();
+        setDialogOpen(false);
+      } else {
+        toast({
+          title: 'Update Failed',
+          description: result.error || 'Could not update the class.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred during update.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="class_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor="class_name">Class Name</FormLabel>
+              <FormControl>
+                <Input
+                  id="class_name"
+                  placeholder="e.g., 10th Standard, 2nd PUC Science"
+                  disabled={isLoading}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="department_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor="department_id">Department</FormLabel>
+              <Select
+                onValueChange={(value) => field.onChange(parseInt(value, 10))}
+                defaultValue={field.value?.toString()}
+                disabled={isLoading || isDepartmentsLoading}
+              >
+                <FormControl>
+                  <SelectTrigger id="department_id">
+                    <SelectValue placeholder={isDepartmentsLoading ? "Loading departments..." : "Select a department"} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {isDepartmentsLoading ? (
+                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                  ) : departments.length > 0 ? (
+                    departments.map((dept) => (
+                      <SelectItem key={dept.department_id} value={dept.department_id.toString()}>
+                        {dept.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                     <SelectItem value="no-departments" disabled>No departments available</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="academic_year"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor="academic_year">Academic Year</FormLabel>
+              <FormControl>
+                <Input
+                  id="academic_year"
+                  placeholder="e.g., 2025-2026"
+                  disabled={isLoading}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <DialogFooter className="pt-4">
+          <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading || isDepartmentsLoading}>
+            {(isLoading || isDepartmentsLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  );
+}
+

@@ -8,8 +8,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Building2, PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { CreateDepartmentForm } from '@/components/college-admin/CreateDepartmentForm'; 
+import { EditDepartmentForm } from '@/components/college-admin/EditDepartmentForm';
 import type { Department } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
+// import { deleteDepartment } from '@/lib/actions'; // TODO: Implement deleteDepartment action
 
 async function getMockDepartments(): Promise<Department[]> {
   await new Promise(resolve => setTimeout(resolve, 500)); 
@@ -30,24 +32,25 @@ export default function ManageDepartmentsPage() {
   const [currentDepartmentToEdit, setCurrentDepartmentToEdit] = React.useState<Department | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = React.useState<Department | null>(null);
 
+  async function loadDepartments() {
+    setIsLoading(true);
+    const fetchedDepartments = await getMockDepartments(); // In a real app, filter by college_id
+    setDepartments(fetchedDepartments);
+    setIsLoading(false);
+  }
+
   React.useEffect(() => {
-    async function loadDepartments() {
-      setIsLoading(true);
-      const fetchedDepartments = await getMockDepartments();
-      setDepartments(fetchedDepartments);
-      setIsLoading(false);
-    }
     loadDepartments();
   }, []);
 
   const handleDepartmentCreated = () => {
+    // loadDepartments(); // Re-fetches static mock data. To see new items, getMockDepartments should be dynamic or merge with mockCreatedDepartments
     console.log("Department created, ideally re-fetch or update list.");
-    // loadDepartments(); // Would re-fetch static mock data
   };
 
   const handleDepartmentUpdated = () => {
-    console.log("Department updated, ideally re-fetch or update list.");
     // loadDepartments(); 
+    console.log("Department updated, ideally re-fetch or update list.");
   };
   
   const openEditDialog = (department: Department) => {
@@ -66,7 +69,7 @@ export default function ManageDepartmentsPage() {
     // const result = await deleteDepartment(departmentToDelete.department_id);
     // if (result.success) {
     //   toast({ title: "Department Deleted", description: `Department "${departmentToDelete.name}" has been deleted.` });
-    //   loadDepartments(); // Re-fetch or optimistically update
+    //   loadDepartments(); 
     // } else {
     //   toast({ title: "Deletion Failed", description: result.error || "Could not delete the department.", variant: "destructive" });
     // }
@@ -160,9 +163,11 @@ export default function ManageDepartmentsPage() {
                 Update the details for {currentDepartmentToEdit.name}.
               </DialogDescription>
             </DialogHeader>
-            {/* TODO: Implement EditDepartmentForm component and import here */}
-            {/* <EditDepartmentForm departmentToEdit={currentDepartmentToEdit} onSuccess={handleDepartmentUpdated} setDialogOpen={setIsEditDialogOpen} /> */}
-            <p className="py-4 text-center text-muted-foreground">Edit Department Form will be here.</p>
+            <EditDepartmentForm 
+                departmentToEdit={currentDepartmentToEdit} 
+                onSuccess={handleDepartmentUpdated} 
+                setDialogOpen={setIsEditDialogOpen} 
+            />
           </DialogContent>
         </Dialog>
       )}
