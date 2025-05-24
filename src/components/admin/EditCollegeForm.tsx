@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { createCollegeSchema, type CreateCollegeFormValues } from '@/schemas/college';
-import { updateCollege } from '@/lib/actions'; // We will create this action
+import { updateCollege } from '@/lib/actions';
 import {
   Form,
   FormControl,
@@ -34,9 +34,16 @@ export function EditCollegeForm({ collegeToEdit, onSuccess, setDialogOpen }: Edi
 
   const form = useForm<CreateCollegeFormValues>({
     resolver: zodResolver(createCollegeSchema),
-    // Default values will be set by useEffect based on collegeToEdit
+    // Initialize defaultValues directly from the collegeToEdit prop
+    defaultValues: {
+      name: collegeToEdit?.name || '',
+      address: collegeToEdit?.address || '',
+      email: collegeToEdit?.email || '',
+      phone: collegeToEdit?.phone || '',
+    },
   });
 
+  // useEffect to reset the form if collegeToEdit prop changes after initial mount
   React.useEffect(() => {
     if (collegeToEdit) {
       form.reset({
