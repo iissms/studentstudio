@@ -6,6 +6,7 @@ export interface User {
   name: string | null
   email: string | null
   role: UserRole
+  college_id?: number; // Added for College Admin context
 }
 
 export interface NavItem {
@@ -26,4 +27,11 @@ export interface College {
   address: string; // Kept for completeness, though not strictly needed by CreateUserForm
   email?: string;
   phone?: string;
+}
+
+// Added Department interface (basic for now)
+export interface Department {
+  department_id: number;
+  name: string;
+  college_id?: number; // To associate with a college
 }

@@ -4,32 +4,38 @@
 import { cookies } from 'next/headers'
 import { loginSchema, type LoginFormValues } from '@/schemas/auth'
 import { createCollegeSchema, type CreateCollegeFormValues } from '@/schemas/college';
-import { createUserSchema, type CreateUserFormValues } from '@/schemas/user'; // New import
-import type { User, UserRole } from '@/types'
+import { createUserSchema, type CreateUserFormValues } from '@/schemas/user';
+import { createDepartmentSchema, type CreateDepartmentFormValues } from '@/schemas/department'; // New import
+import type { User, UserRole, Department, College } from '@/types' // Added Department
 import { redirect } from 'next/navigation'
 import { SignJWT, jwtVerify, decodeJwt } from 'jose'
 import { revalidatePath } from 'next/cache';
+import { getUserFromCookies } from './auth-utils'; // Helper
 
 const MOCK_JWT_SECRET = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long-for-app';
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
+
 
 // Mock users for login
-const mockUsers: Record<string, Omit<User, 'id' | 'email'> & { email: string, passwordSimple: string, college_id?: number }> = {
+const mockUsers: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { email: string, passwordSimple: string, college_id?: number }> = {
   'admin@example.com': { name: 'Admin User', email: 'admin@example.com', role: 'ADMIN', passwordSimple: 'admin123' },
   'collegeadmin@example.com': { name: 'College Admin', email: 'collegeadmin@example.com', role: 'COLLEGE_ADMIN', passwordSimple: 'password', college_id: 1 },
   'teacher@example.com': { name: 'Teacher User', email: 'teacher@example.com', role: 'TEACHER', passwordSimple: 'password', college_id: 1 },
   'student@example.com': { name: 'Student User', email: 'student@example.com', role: 'STUDENT', passwordSimple: 'password', college_id: 1 },
 };
 
-// In-memory store for created users (mock)
+// In-memory store for created users/colleges/departments (mock)
 let mockCreatedUsers: (User & {password: string, college_id?: number})[] = [];
+let mockCreatedColleges: College[] = []; // For potential future use with getColleges
+let mockCreatedDepartments: Department[] = []; // For potential future use
 
 
 async function createMockToken(userPayload: {
-  user_id: number; // Changed to number to match JWT spec typically
+  user_id: number;
   role: UserRole;
   name: string | null;
   email: string | null;
-  college_id?: number; // Added college_id to token
+  college_id?: number;
 }): Promise<string> {
   const secret = new TextEncoder().encode(MOCK_JWT_SECRET);
   const alg = 'HS256';
@@ -44,7 +50,6 @@ async function createMockToken(userPayload: {
 export async function loginUser(
   values: LoginFormValues
 ): Promise<{ success: boolean; error?: string; user?: User }> {
-  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
   const validatedFields = loginSchema.safeParse(values);
 
   if (!validatedFields.success) {
@@ -53,14 +58,12 @@ export async function loginUser(
 
   const { email, password } = validatedFields.data;
   
-  let userToAuthData: (typeof mockUsers[string] & { id: string }) | null = null;
+  let userToAuthData: (Omit<User, 'id' | 'email' | 'college_id'> & { id: string, email: string, passwordSimple: string, college_id?: number }) | null = null;
   
-  // Check against predefined mock users first
   const specificMockUser = mockUsers[email];
   if (specificMockUser && specificMockUser.passwordSimple === password) {
     userToAuthData = { ...specificMockUser, id: String(Object.keys(mockUsers).indexOf(email) + 1) };
   } else {
-    // Check against dynamically created mock users (if any)
     const createdUser = mockCreatedUsers.find(u => u.email === email && u.password === password);
     if (createdUser) {
         userToAuthData = {
@@ -68,30 +71,26 @@ export async function loginUser(
             name: createdUser.name,
             email: createdUser.email,
             role: createdUser.role,
-            passwordSimple: createdUser.password, // not ideal but for mock
+            passwordSimple: createdUser.password,
             college_id: createdUser.college_id
         };
     }
   }
 
-
-  // Fallback for generic student login if no specific user matched but password is known
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
-     // Allow any email with 'password' to login as a generic student if not a predefined user
     userToAuthData = {
-      id: String(Date.now()), // Or a more stable mock ID generation
+      id: String(Date.now()),
       name: `User ${email.split('@')[0]}`,
       email: email,
       role: 'STUDENT',
       passwordSimple: password,
-      college_id: 1, // Default college_id for generic student
+      college_id: 1, 
     };
   }
 
-
   if (userToAuthData) {
     const jwtPayload = {
-      user_id: parseInt(userToAuthData.id, 10), // Ensure user_id is number for JWT
+      user_id: parseInt(userToAuthData.id, 10),
       role: userToAuthData.role,
       name: userToAuthData.name,
       email: userToAuthData.email,
@@ -108,10 +107,11 @@ export async function loginUser(
         maxAge: 60 * 60 * 24 * 7, // 1 week
       });
       return { success: true, user: {
-        id: userToAuthData.id, // Keep as string for User type
+        id: userToAuthData.id, 
         name: userToAuthData.name,
         email: userToAuthData.email,
-        role: userToAuthData.role
+        role: userToAuthData.role,
+        college_id: userToAuthData.college_id,
       }};
     } catch (error) {
       console.error('Failed to create mock token:', error);
@@ -123,15 +123,13 @@ export async function loginUser(
 }
 
 export async function logoutUser() {
-  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token';
   cookies().delete(AUTH_COOKIE_NAME, { path: '/' });
   redirect('/login');
 }
 
 export async function createCollege(
   values: CreateCollegeFormValues
-): Promise<{ success: boolean; error?: string; message?: string; college?: any }> {
-  // Simulate API call delay
+): Promise<{ success: boolean; error?: string; message?: string; college?: College }> {
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   const validatedFields = createCollegeSchema.safeParse(values);
@@ -139,13 +137,12 @@ export async function createCollege(
     return { success: false, error: 'Invalid input for creating college.' };
   }
   
-  console.log('Mock Creating college with values:', validatedFields.data);
-  const mockCreatedCollege = {
-    college_id: Math.floor(Math.random() * 10000) + 100, // mock ID
+  const mockCreatedCollege: College = {
+    college_id: Math.floor(Math.random() * 10000) + 100,
     ...validatedFields.data,
   };
-  // In a real app, you'd add this to a persistent store or call an API.
-  // For mocks, you could update a global mock store if you want to see it in the list.
+  mockCreatedColleges.push(mockCreatedCollege);
+  console.log('Mock Creating college:', mockCreatedCollege);
   
   revalidatePath('/admin/colleges'); 
 
@@ -156,11 +153,10 @@ export async function createCollege(
   };
 }
 
-// New server action for creating a user (CollegeAdmin)
 export async function createUser(
   values: CreateUserFormValues
-): Promise<{ success: boolean; error?: string; message?: string; user?: Omit<User, 'id'> & {id: string, college_id?: number} }> {
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call delay
+): Promise<{ success: boolean; error?: string; message?: string; user?: User & { college_id?: number } }> {
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   const validatedFields = createUserSchema.safeParse(values);
   if (!validatedFields.success) {
@@ -170,30 +166,64 @@ export async function createUser(
 
   const { email, password, role, college_id, name } = validatedFields.data;
 
-  // Check if user already exists (mock check)
   if (mockUsers[email] || mockCreatedUsers.some(u => u.email === email)) {
     return { success: false, error: `User with email ${email} already exists.` };
   }
   
-  // For demonstration, log and simulate success by adding to a mock in-memory store
-  const newUserId = String(Date.now()); // Simple mock ID
+  const newUserId = String(Date.now());
   const newUser: User & {password: string, college_id?: number} = {
     id: newUserId,
     email,
-    name: name || `User ${email.split('@')[0]}`, // Use provided name or generate one
-    role, // Should be COLLEGE_ADMIN from schema default
-    password, // Store password for mock login
+    name: name || `User ${email.split('@')[0]}`,
+    role,
+    password, 
     college_id,
   };
 
   mockCreatedUsers.push(newUser);
-  console.log('Mock Creating user with values:', newUser);
+  console.log('Mock Creating user:', newUser);
   
-  // revalidatePath('/admin/users'); // If there was a user list to update
-
   return {
     success: true,
     message: `User "${email}" (mock College Admin) created successfully.`,
     user: newUser,
+  };
+}
+
+export async function createDepartment(
+  values: CreateDepartmentFormValues
+): Promise<{ success: boolean; error?: string; message?: string; department?: Department }> {
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+
+  const user = await getUserFromCookies(cookies());
+
+  if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
+    return { success: false, error: 'Unauthorized: Only College Admins can create departments, or college ID is missing.' };
+  }
+
+  const validatedFields = createDepartmentSchema.safeParse(values);
+  if (!validatedFields.success) {
+    return { success: false, error: 'Invalid input for creating department.' };
+  }
+
+  const { name } = validatedFields.data;
+  const collegeId = user.college_id;
+
+  const newDepartment: Department = {
+    department_id: Math.floor(Math.random() * 10000) + 500, // Mock ID
+    name,
+    college_id: collegeId,
+  };
+
+  mockCreatedDepartments.push(newDepartment);
+  console.log(`Mock Creating department "${name}" for college ID ${collegeId}:`, newDepartment);
+  
+  // In a real app, you might revalidate a path that lists departments for this college.
+  // e.g., revalidatePath(`/college-admin/departments`);
+
+  return {
+    success: true,
+    message: `Department "${name}" (mock) created successfully for your college.`,
+    department: newDepartment,
   };
 }
