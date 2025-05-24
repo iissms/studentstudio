@@ -1,12 +1,13 @@
 
-'use client'; // Needs to be client component to manage dialog state
+'use client'; 
 
-import * as React from 'react'; // Import React
+import * as React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle } from "lucide-react";
-import { CreateCollegeForm } from '@/components/admin/CreateCollegeForm'; // Import the new form
+import { PlusCircle, Pencil } from "lucide-react";
+import { CreateCollegeForm } from '@/components/admin/CreateCollegeForm';
+import { EditCollegeForm } from '@/components/admin/EditCollegeForm'; // Import the new Edit form
 
 interface College {
   college_id: number;
@@ -16,9 +17,10 @@ interface College {
   phone?: string;
 }
 
-// Keep mock fetch function for now. In a real app, this would fetch from an API.
-// Note: This mock function will not be updated by the createCollege action.
-// The list will only show these initial mock colleges.
+// Keep mock fetch function for now.
+// Note: This mock function will not be updated by the createCollege or updateCollege actions.
+// The list will only show these initial mock colleges, and updates to them won't be reflected here
+// unless this function is made to read from a mutable, shared source.
 async function getColleges(): Promise<College[]> {
   await new Promise(resolve => setTimeout(resolve, 500));
   return [
@@ -33,7 +35,9 @@ async function getColleges(): Promise<College[]> {
 export default function ManageCollegesPage() {
   const [colleges, setColleges] = React.useState<College[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [currentCollegeToEdit, setCurrentCollegeToEdit] = React.useState<College | null>(null);
 
   React.useEffect(() => {
     async function loadColleges() {
@@ -45,16 +49,22 @@ export default function ManageCollegesPage() {
     loadColleges();
   }, []);
 
-  // This function will be called by CreateCollegeForm on success.
-  // For now, it doesn't re-fetch or update the local list as getColleges is static mock.
-  // In a real app with an API, you might re-fetch colleges here or optimistically update.
   const handleCollegeCreated = () => {
     // console.log("College created, ideally re-fetch or update list.");
-    // For demo with mock data, revalidatePath in action is the primary mechanism,
-    // but for pure client-side static mock `getColleges`, it won't show new items.
-    // To see the new college with mocks, `getColleges` would need to be mutable.
+    // To see newly created colleges, getColleges() would need to be dynamic.
+    // Or, for a true SPA feel, optimistically update `colleges` state here.
+    // For now, we rely on revalidatePath in the action, but getColleges() is static.
   };
 
+  const handleCollegeUpdated = () => {
+    // console.log("College updated, ideally re-fetch or update list.");
+    // Similar to creation, getColleges() needs to be dynamic or list updated optimistically.
+  };
+
+  const openEditDialog = (college: College) => {
+    setCurrentCollegeToEdit(college);
+    setIsEditDialogOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -65,7 +75,7 @@ export default function ManageCollegesPage() {
             View, create, and manage colleges in the system.
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -79,7 +89,7 @@ export default function ManageCollegesPage() {
                 Fill in the details below to add a new college to the system.
               </DialogDescription>
             </DialogHeader>
-            <CreateCollegeForm onSuccess={handleCollegeCreated} setDialogOpen={setIsDialogOpen} />
+            <CreateCollegeForm onSuccess={handleCollegeCreated} setDialogOpen={setIsCreateDialogOpen} />
           </DialogContent>
         </Dialog>
       </div>
@@ -87,7 +97,7 @@ export default function ManageCollegesPage() {
       <Card>
         <CardHeader>
           <CardTitle>College List</CardTitle>
-          <CardDescription>A list of all registered colleges.</CardDescription>
+          <CardDescription>A list of all registered colleges. Updates to this list via forms may not reflect immediately due to mock data setup.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -96,16 +106,23 @@ export default function ManageCollegesPage() {
             <ul className="space-y-4">
               {colleges.map((college) => (
                 <li key={college.college_id} className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-semibold">{college.name}</h3>
-                  <p className="text-sm text-muted-foreground">ID: {college.college_id}</p>
-                  <p className="text-sm text-muted-foreground">Address: {college.address}</p>
-                  {college.email && (
-                    <p className="text-sm text-muted-foreground">Email: {college.email}</p>
-                  )}
-                  {college.phone && (
-                    <p className="text-sm text-muted-foreground">Phone: {college.phone}</p>
-                  )}
-                  {/* TODO: Add Edit/Delete buttons here */}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold">{college.name}</h3>
+                      <p className="text-sm text-muted-foreground">ID: {college.college_id}</p>
+                      <p className="text-sm text-muted-foreground">Address: {college.address}</p>
+                      {college.email && (
+                        <p className="text-sm text-muted-foreground">Email: {college.email}</p>
+                      )}
+                      {college.phone && (
+                        <p className="text-sm text-muted-foreground">Phone: {college.phone}</p>
+                      )}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => openEditDialog(college)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -114,6 +131,24 @@ export default function ManageCollegesPage() {
           )}
         </CardContent>
       </Card>
+
+      {currentCollegeToEdit && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit College</DialogTitle>
+              <DialogDescription>
+                Update the details for {currentCollegeToEdit.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <EditCollegeForm 
+              collegeToEdit={currentCollegeToEdit} 
+              onSuccess={handleCollegeUpdated} 
+              setDialogOpen={setIsEditDialogOpen} 
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

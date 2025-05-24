@@ -18,8 +18,6 @@ import { revalidatePath } from 'next/cache';
 import { getUserFromCookies } from './auth-utils';
 import { format } from 'date-fns';
 
-const MOCK_JWT_SECRET_KEY = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long-for-app';
-
 
 // In-memory mock databases for entities
 const mockUsersDb: Record<string, Omit<User, 'id' | 'email' | 'college_id'> & { id: string, email: string, passwordSimple: string, college_id?: number }> = {
@@ -40,19 +38,20 @@ let mockCreatedStudents: Student[] = [];
 
 
 async function createMockJwtToken(payload: {
-  user_id: number; // Ensure user_id is numeric for JWT standard
+  user_id: number; 
   role: UserRole;
   name: string | null;
   email: string | null;
   college_id?: number;
 }): Promise<string> {
+  const MOCK_JWT_SECRET_KEY = process.env.MOCK_JWT_SECRET || 'super-secret-mock-jwt-key-32-chars-long-for-app';
   const secret = new TextEncoder().encode(MOCK_JWT_SECRET_KEY);
   const alg = 'HS256';
 
   return await new SignJWT(payload)
     .setProtectedHeader({ alg })
     .setIssuedAt()
-    .setExpirationTime('7d') // Expires in 7 days
+    .setExpirationTime('7d') 
     .sign(secret);
 }
 
@@ -68,37 +67,34 @@ export async function loginUser(
 
   const { email, password } = validatedFields.data;
 
-  // Check against predefined mock users
   let userToAuthData = mockUsersDb[email];
 
-  // If not found, check against dynamically created users
   if (!userToAuthData) {
       const createdUser = mockCreatedUsers.find(u => u.email === email);
       if (createdUser) {
           userToAuthData = {
               ...createdUser,
-              id: createdUser.id, // Keep string id
-              passwordSimple: createdUser.password, // for auth check below
+              id: createdUser.id, 
+              passwordSimple: createdUser.password, 
           };
       }
   }
   
-  // Generic fallback for any unlisted email with 'password', 'admin123' or 'Test@123'
   if (!userToAuthData && (password === 'password' || password === 'admin123' || password === 'Test@123')) {
     userToAuthData = {
-      id: String(Date.now()), // A pseudo-unique ID for this mock user
+      id: String(Date.now()), 
       name: `User ${email.split('@')[0]}`,
       email: email,
-      role: 'STUDENT', // Default role for generic fallback
+      role: 'STUDENT', 
       passwordSimple: password,
-      college_id: 1, // Default college_id for generic fallback
+      college_id: 1, 
     };
   }
 
 
   if (userToAuthData && userToAuthData.passwordSimple === password) {
     const jwtPayload = {
-      user_id: parseInt(userToAuthData.id, 10), // Convert string ID to number for JWT
+      user_id: parseInt(userToAuthData.id, 10), 
       role: userToAuthData.role,
       name: userToAuthData.name,
       email: userToAuthData.email,
@@ -112,11 +108,11 @@ export async function loginUser(
         secure: process.env.NODE_ENV === 'production',
         path: '/',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 24 * 7, 
       });
       return {
         success: true, user: {
-          id: userToAuthData.id, // Return string ID for User interface
+          id: userToAuthData.id, 
           name: userToAuthData.name,
           email: userToAuthData.email,
           role: userToAuthData.role,
@@ -165,6 +161,47 @@ export async function createCollege(
   };
 }
 
+export async function updateCollege(
+  collegeId: number,
+  values: CreateCollegeFormValues
+): Promise<{ success: boolean; error?: string; message?: string; college?: College }> {
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  const validatedFields = createCollegeSchema.safeParse(values);
+  if (!validatedFields.success) {
+    return { success: false, error: 'Invalid input for updating college.' };
+  }
+
+  const collegeIndex = mockCreatedColleges.findIndex(c => c.college_id === collegeId);
+
+  if (collegeIndex === -1) {
+    // For now, we only update colleges created during this session (in mockCreatedColleges)
+    // A more robust solution would involve a single source of truth for all colleges.
+    console.warn(`College with ID ${collegeId} not found in mockCreatedColleges for update.`);
+    // Attempt to update the initial static list (this part is tricky as it's not directly mutable here)
+    // This part is more illustrative as `getColleges` in the page is static.
+    // If this were a real DB, this check would be different.
+    return { success: false, error: `College with ID ${collegeId} not found for update in dynamic list. Static list update not implemented in this mock.` };
+  }
+  
+  const updatedCollege = {
+    ...mockCreatedColleges[collegeIndex],
+    ...validatedFields.data,
+  };
+  mockCreatedColleges[collegeIndex] = updatedCollege;
+  
+  console.log('Mock Updating college:', updatedCollege);
+  
+  revalidatePath('/admin/colleges'); 
+
+  return {
+    success: true,
+    message: `College "${validatedFields.data.name}" (mock) updated successfully.`,
+    college: updatedCollege,
+  };
+}
+
+
 export async function createUser(
   values: CreateUserFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; user?: User & { college_id?: number } }> {
@@ -195,7 +232,7 @@ export async function createUser(
   mockCreatedUsers.push(newUser);
   console.log('Mock Creating user:', newUser);
   
-  // revalidatePath('/admin/users');
+  revalidatePath('/admin/users');
 
   return {
     success: true,
@@ -364,7 +401,7 @@ export async function assignSubjectsToExam(
   const collegeId = user.college_id;
 
   const examExists = mockCreatedExams.some(e => e.exam_id === exam_id && e.college_id === collegeId) || 
-                     [301, 302, 303].includes(exam_id); // Allow assignment to initial mock exams from page
+                     [301, 302, 303].includes(exam_id); 
   
   if (!examExists) {
     return { success: false, error: `Exam with ID ${exam_id} not found in your college.` };
@@ -396,10 +433,7 @@ export async function assignSubjectsToExam(
     const currentAssigned = new Set(mockCreatedExams[examIndex].assigned_subject_ids || []);
     subject_ids.forEach(id => currentAssigned.add(id));
     mockCreatedExams[examIndex].assigned_subject_ids = Array.from(currentAssigned);
-  } else {
-    // If exam was one of the initial static mocks, we need to find it and update it too
-    // This part is more complex with separate static and dynamic mock lists. For now, actions focus on mockCreatedExams.
-  }
+  } 
 
   revalidatePath('/shared-management/exams');
 
@@ -420,7 +454,6 @@ export async function createStudent(
     return { success: false, error: 'Unauthorized: Only College Admins or Teachers can add students, or college ID is missing.' };
   }
 
-  // Validate input using Zod schema
   const validatedFields = createStudentSchema.safeParse(values);
   if (!validatedFields.success) {
     console.error("Student creation validation errors:", validatedFields.error.flatten().fieldErrors);
@@ -430,7 +463,7 @@ export async function createStudent(
   const newStudentData = validatedFields.data;
 
   const newStudent: Student = {
-    student_id: Math.floor(Math.random() * 1000000) + 20000, // Generate a mock student_id
+    student_id: Math.floor(Math.random() * 1000000) + 20000, 
     ...newStudentData,
     college_id: user.college_id,
   };
@@ -446,3 +479,4 @@ export async function createStudent(
     student: newStudent,
   };
 }
+
