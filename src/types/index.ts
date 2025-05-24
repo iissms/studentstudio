@@ -35,3 +35,13 @@ export interface Department {
   name: string;
   college_id?: number; // To associate with a college
 }
+
+// Added Class interface
+export interface Class {
+  class_id: number;
+  class_name: string;
+  department_id: number;
+  department_name?: string; // For display purposes
+  academic_year: string;
+  college_id?: number; // To associate with a college
+}
