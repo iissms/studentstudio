@@ -1,68 +1,79 @@
-{
-  "name": "nextn",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@genkit-ai/googleai": "^1.8.0",
-    "@genkit-ai/next": "^1.8.0",
-    "@hookform/resolvers": "^4.1.3",
-    "@radix-ui/react-accordion": "^1.2.3",
-    "@radix-ui/react-alert-dialog": "^1.1.6",
-    "@radix-ui/react-avatar": "^1.1.3",
-    "@radix-ui/react-checkbox": "^1.1.4",
-    "@radix-ui/react-dialog": "^1.1.6",
-    "@radix-ui/react-dropdown-menu": "^2.1.6",
-    "@radix-ui/react-label": "^2.1.2",
-    "@radix-ui/react-menubar": "^1.1.6",
-    "@radix-ui/react-popover": "^1.1.6",
-    "@radix-ui/react-progress": "^1.1.2",
-    "@radix-ui/react-radio-group": "^1.2.3",
-    "@radix-ui/react-scroll-area": "^1.2.3",
-    "@radix-ui/react-select": "^2.1.6",
-    "@radix-ui/react-separator": "^1.1.2",
-    "@radix-ui/react-slider": "^1.2.3",
-    "@radix-ui/react-slot": "^1.1.2",
-    "@radix-ui/react-switch": "^1.1.3",
-    "@radix-ui/react-tabs": "^1.1.3",
-    "@radix-ui/react-toast": "^1.2.6",
-    "@radix-ui/react-tooltip": "^1.1.8",
-    "@tanstack-query-firebase/react": "^1.0.5",
-    "@tanstack/react-query": "^5.66.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^3.6.0",
-    "dotenv": "^16.5.0",
-    "firebase": "^11.8.1",
-    "genkit": "^1.8.0",
-    "jose": "^5.6.3",
-    "lucide-react": "^0.475.0",
-    "next": "15.2.3",
-    "patch-package": "^8.0.0",
-    "react": "^18.3.1",
-    "react-day-picker": "^8.10.1",
-    "react-dom": "^18.3.1",
-    "react-hook-form": "^7.54.2",
-    "recharts": "^2.15.1",
-    "tailwind-merge": "^3.0.1",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.24.2"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "genkit-cli": "^1.8.0",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+
+'use server'
+
+import { cookies } from 'next/headers'
+import { loginSchema, type LoginFormValues } from '@/schemas/auth'
+import type { User } from '@/types'
+import { redirect } from 'next/navigation'
+
+// It's better to read env variables inside the function if they might not be available at module load time in all environments.
+// However, for server actions, they are generally available.
+
+export async function loginUser(
+  values: LoginFormValues
+): Promise<{ success: boolean; error?: string; user?: User }> {
+  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token'
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5007/api'
+
+  const validatedFields = loginSchema.safeParse(values)
+
+  if (!validatedFields.success) {
+    return { success: false, error: 'Invalid input.' }
   }
+
+  const { email, password } = validatedFields.data
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    })
+
+    if (!response.ok) {
+      // Attempt to parse error response from backend
+      let errorData = { message: `Login failed with status: ${response.status}` };
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Backend didn't return JSON or it was malformed
+        console.error('Could not parse error response JSON:', e);
+      }
+      console.error('Login API error:', response.status, errorData);
+      return {
+        success: false,
+        error: errorData.message || `Login failed. Status: ${response.status}`,
+      }
+    }
+
+    // Backend is expected to set the HttpOnly cookie.
+    // The token might be in the response body, but we rely on the cookie being set.
+    // If your backend sets the cookie correctly, no further action is needed here regarding the token.
+    // const responseData = await response.json(); // Contains { token: "..." }
+    // We don't need to manually set the cookie here if the backend does it via Set-Cookie header.
+
+    return { success: true }
+  } catch (error) {
+    console.error('Login request failed:', error)
+    if (error instanceof Error) {
+        return { success: false, error: error.message || 'An unexpected network error occurred.' };
+    }
+    return { success: false, error: 'An unexpected error occurred during login.' }
+  }
+}
+
+export async function logoutUser() {
+  const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'meritmatrix_session_token'
+  // Instruct the browser to clear the cookie by setting it to an empty value and a past expiry date
+  cookies().set(AUTH_COOKIE_NAME, '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    expires: new Date(0),
+    path: '/',
+    sameSite: 'lax', // or 'strict' depending on your requirements
+  })
+  // Redirect to login page after logout
+  redirect('/login')
 }
