@@ -32,6 +32,7 @@ export default function ManageExamsPage() {
     setIsLoading(true);
     try {
       const fetchedExams = await fetchExamsForCollegeAdmin(); // Use new fetch action
+      console.log("Fetched Exams:", fetchedExams);
       setExams(fetchedExams);
     } catch (error) {
       console.error("Failed to fetch exams:", error);

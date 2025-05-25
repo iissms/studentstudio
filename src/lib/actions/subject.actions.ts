@@ -42,14 +42,39 @@ export async function fetchSubjectsForCollegeAdmin(): Promise<Subject[]> {
 }
 
 export async function fetchSubjectsForClass(classId: number): Promise<Subject[]> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const user = await getUserFromCookies(await cookies());
-    if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
-        return [];
+  const cookieStore = cookies();
+  const user = await getUserFromCookies(await cookieStore);
+  const token = (await cookieStore).get('meritmatrix_session_token')?.value;
+
+  if (!user || !token || !user.college_id) {
+    console.warn('fetchSubjectsForClass: Unauthorized or missing data.');
+    return [];
+  }
+
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/subjects/by-class/${classId}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        next: { revalidate: 60 }, // Optional: cache revalidation for Next.js
+      }
+    );    
+
+    if (!res.ok) {
+      console.error('Failed to fetch subjects:', res.statusText);
+      return [];
     }
-    const collegeId = user.college_id;
-    const allSubjects = [...mockInitialSubjects, ...mockCreatedSubjects];
-    return allSubjects.filter(s => s.class_id === classId && s.college_id === collegeId);
+
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching subjects for class:', error);
+    return [];
+  }
 }
 
 export async function createSubject(

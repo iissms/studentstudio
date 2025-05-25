@@ -99,6 +99,8 @@ export function CreateStudentForm({ onSuccess, setDialogOpen }: CreateStudentFor
       }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
+        const flattened = error.flatten().fieldErrors;
+      console.error("Zod validation error:", flattened); // 👈 Console the full error object
         toast({
           title: 'Validation Error',
           description: "Please check the form for errors.",

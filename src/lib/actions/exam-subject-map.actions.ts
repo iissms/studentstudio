@@ -11,56 +11,64 @@ import { mockExamSubjectMaps, mockInitialExams, mockCreatedExams } from '../mock
 export async function assignSubjectsToExam(
   values: AssignSubjectsToExamFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; mappings?: ExamSubjectMap[] }> {
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const user = await getUserFromCookies(await cookies());
 
-  const user = await getUserFromCookies(cookies());
   if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
-    return { success: false, error: 'Unauthorized: Only College Admins or Teachers can assign subjects, or college ID is missing.' };
+    return {
+      success: false,
+      error: 'Unauthorized: Only College Admins or Teachers can assign subjects, or college ID is missing.',
+    };
   }
 
   const validatedFields = assignSubjectsToExamSchema.safeParse(values);
   if (!validatedFields.success) {
-    return { success: false, error: 'Invalid input for assigning subjects to exam.' };
+    console.error('Validation failed:', validatedFields.error.flatten().fieldErrors);
+    return {
+      success: false,
+      error: 'Invalid input for assigning subjects to exam.',
+    };
   }
 
-  const { exam_id, subject_ids } = validatedFields.data;
-  const collegeId = user.college_id;
-
-  const allExams = [...mockInitialExams, ...mockCreatedExams];
-  const targetExam = allExams.find(e => e.exam_id === exam_id && e.college_id === collegeId);
-
-  if (!targetExam) {
-    return { success: false, error: `Exam with ID ${exam_id} not found in your college.` };
+  const token = (await cookies()).get('meritmatrix_session_token')?.value;
+  if (!token) {
+    return { success: false, error: 'Missing session token.' };
   }
 
-  // Update the target exam's assigned_subject_ids
-  targetExam.assigned_subject_ids = Array.from(new Set([...(targetExam.assigned_subject_ids || []), ...subject_ids]));
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/exam-subjects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ...validatedFields.data,
+        college_id: user.college_id,
+      }),
+    });
 
-
-  // Also update the mockExamSubjectMaps for good measure, though it's not directly used for display in this version
-  const createdMappings: ExamSubjectMap[] = [];
-  subject_ids.forEach(subject_id => {
-    const mappingExists = mockExamSubjectMaps.some(
-      m => m.exam_id === exam_id && m.subject_id === subject_id && m.college_id === collegeId
-    );
-
-    if (!mappingExists) {
-      const newMapping: ExamSubjectMap = {
-        mapping_id: Math.floor(Math.random() * 10000000) + 100000,
-        exam_id,
-        subject_id,
-        college_id: collegeId,
+    if (!res.ok) {
+      const errorData = await res.json();
+      return {
+        success: false,
+        error: errorData.message || 'Failed to assign subjects to exam.',
       };
-      mockExamSubjectMaps.push(newMapping);
-      createdMappings.push(newMapping);
     }
-  });
-  
-  revalidatePath('/shared-management/exams');
 
-  return {
-    success: true,
-    message: `${subject_ids.length} subject(s) processed for assignment to exam ID ${exam_id}.`,
-    mappings: createdMappings,
-  };
+    const responseData = await res.json();
+
+    revalidatePath('/shared-management/exams');
+
+    return {
+      success: true,
+      message: `${validatedFields.data.subject_ids.length} subject(s) assigned to Exam ID ${validatedFields.data.exam_id}.`,
+      mappings: responseData.mappings || [],
+    };
+  } catch (error: any) {
+    console.error('Error assigning subjects:', error);
+    return {
+      success: false,
+      error: error.message || 'Unexpected error during subject assignment.',
+    };
+  }
 }
