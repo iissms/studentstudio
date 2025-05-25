@@ -119,39 +119,40 @@ export function CreateClassForm({ onSuccess, setDialogOpen }: CreateClassFormPro
           )}
         />
         <FormField
-          control={form.control}
-          name="department_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="department_id">Department</FormLabel>
-              <Select
-                onValueChange={field.onChange} // Schema handles transform
-                defaultValue={field.value?.toString()}
-                disabled={isLoading || isDepartmentsLoading}
-              >
-                <FormControl>
-                  <SelectTrigger id="department_id">
-                    <SelectValue placeholder={isDepartmentsLoading ? "Loading departments..." : "Select a department"} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {isDepartmentsLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : departments.length > 0 ? (
-                    departments.map((dept) => (
-                      <SelectItem key={dept.department_id} value={dept.department_id.toString()}>
-                        {dept.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                     <SelectItem value="no-departments" disabled>No departments available</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
+  control={form.control}
+  name="department_id"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel htmlFor="department_id">Department</FormLabel>
+      <Select
+        onValueChange={(val) => field.onChange(Number(val))}
+        value={field.value?.toString()}
+        disabled={isLoading || isDepartmentsLoading}
+      >
+        <FormControl>
+          <SelectTrigger id="department_id">
+            <SelectValue placeholder={isDepartmentsLoading ? "Loading departments..." : "Select a department"} />
+          </SelectTrigger>
+        </FormControl>
+        <SelectContent>
+          {isDepartmentsLoading ? (
+            <SelectItem value="loading" disabled>Loading...</SelectItem>
+          ) : departments.length > 0 ? (
+            departments.map((dept) => (
+              <SelectItem key={dept.department_id} value={dept.department_id.toString()}>
+                {dept.name}
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="no-departments" disabled>No departments available</SelectItem>
           )}
-        />
+        </SelectContent>
+      </Select>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+
         <FormField
           control={form.control}
           name="academic_year"

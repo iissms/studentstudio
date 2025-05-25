@@ -101,40 +101,41 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="class_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="class_id">Assign to Class</FormLabel>
-              <Select
-                onValueChange={field.onChange} // Schema handles transform
-                defaultValue={field.value?.toString()}
-                disabled={isLoading || isClassesLoading}
-              >
-                <FormControl>
-                  <SelectTrigger id="class_id">
-                    <SelectValue placeholder={isClassesLoading ? "Loading classes..." : "Select a class"} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {isClassesLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : classes.length > 0 ? (
-                    classes.map((cls) => (
-                      <SelectItem key={cls.class_id} value={cls.class_id.toString()}>
-                        {cls.class_name} ({cls.academic_year})
-                      </SelectItem>
-                    ))
-                  ) : (
-                     <SelectItem value="no-classes" disabled>No classes available for your college</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
+      <FormField
+  control={form.control}
+  name="class_id"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel htmlFor="class_id">Assign to Class</FormLabel>
+      <Select
+        onValueChange={(val) => field.onChange(Number(val))} // ✅ Convert to number
+        value={field.value?.toString()}                      // ✅ Convert number → string for <Select>
+        disabled={isLoading || isClassesLoading}
+      >
+        <FormControl>
+          <SelectTrigger id="class_id">
+            <SelectValue placeholder={isClassesLoading ? "Loading classes..." : "Select a class"} />
+          </SelectTrigger>
+        </FormControl>
+        <SelectContent>
+          {isClassesLoading ? (
+            <SelectItem value="loading" disabled>Loading...</SelectItem>
+          ) : classes.length > 0 ? (
+            classes.map((cls) => (
+              <SelectItem key={cls.class_id} value={cls.class_id.toString()}>
+                {cls.class_name} ({cls.academic_year})
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="no-classes" disabled>No classes available for your college</SelectItem>
           )}
-        />
+        </SelectContent>
+      </Select>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+
 
         <FormField
           control={form.control}

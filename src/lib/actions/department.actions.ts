@@ -7,24 +7,45 @@ import { createDepartmentSchema, type CreateDepartmentFormValues } from '@/schem
 import type { Department } from '@/types';
 import { getUserFromCookies } from '../auth-utils';
 import { mockInitialDepartments, mockCreatedDepartments } from '../mock-data';
+import axios from 'axios';
 
 export async function fetchDepartmentsForCollegeAdmin(): Promise<Department[]> {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  const user = await getUserFromCookies(cookies());
-  if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
-    console.warn('fetchDepartmentsForCollegeAdmin: Unauthorized or no college_id for user:', user);
+  try {
+    const user = await getUserFromCookies(await cookies());
+
+    if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+      console.warn('fetchDepartmentsForCollegeAdmin: Unauthorized or no college_id for user:', user);
+      return [];
+    }
+
+    const token = (await cookies()).get('meritmatrix_session_token')?.value;
+    if (!token) {
+      console.warn('fetchDepartmentsForCollegeAdmin: Missing token.');
+      return [];
+    }
+
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/departments`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data as Department[];
+  } catch (error: any) {
+    console.error('Failed to fetch departments from live API:', error.response?.data || error.message);
     return [];
   }
-  const allDepartments = [...mockInitialDepartments, ...mockCreatedDepartments];
-  return allDepartments.filter(dept => dept.college_id === user.college_id);
 }
 
 export async function createDepartment(
   values: CreateDepartmentFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; department?: Department }> {
-  await new Promise(resolve => setTimeout(resolve, 500)); 
+  const user = await getUserFromCookies(await cookies());
+  console.log('Creating department for user:', user);
 
-  const user = await getUserFromCookies(cookies());
   if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
     return { success: false, error: 'Unauthorized: Only College Admins can create departments, or college ID is missing.' };
   }
@@ -34,24 +55,32 @@ export async function createDepartment(
     return { success: false, error: 'Invalid input for creating department.' };
   }
 
-  const { name } = validatedFields.data;
-  const collegeId = user.college_id;
+  try {
+    const token = (await cookies()).get('meritmatrix_session_token')?.value;
 
-  const newDepartment: Department = {
-    department_id: Math.floor(Math.random() * 10000) + 500, 
-    name,
-    college_id: collegeId,
-  };
+    const response = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/departments`,
+      { name: validatedFields.data.name },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-  mockCreatedDepartments.push(newDepartment);
-  
-  revalidatePath('/college-admin/departments');
+    revalidatePath('/college-admin/departments');
 
-  return {
-    success: true,
-    message: `Department "${name}" (mock) created successfully for your college.`,
-    department: newDepartment,
-  };
+    return {
+      success: true,
+      message: `Department "${response.data.name}" created successfully.`,
+      department: response.data,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.response?.data?.message || 'Failed to create department.',
+    };
+  }
 }
 
 export async function updateDepartment(
@@ -59,7 +88,7 @@ export async function updateDepartment(
   values: CreateDepartmentFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; department?: Department }> {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const user = await getUserFromCookies(cookies());
+    const user = await getUserFromCookies(await cookies());
     if (!user || user.role !== 'COLLEGE_ADMIN' || !user.college_id) {
         return { success: false, error: 'Unauthorized or college ID missing.' };
     }

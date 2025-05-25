@@ -7,28 +7,43 @@ import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/sub
 import type { Subject } from '@/types';
 import { getUserFromCookies } from '../auth-utils';
 import { mockInitialSubjects, mockCreatedSubjects, mockInitialClasses, mockCreatedClasses } from '../mock-data';
+import axios from 'axios';
 
 export async function fetchSubjectsForCollegeAdmin(): Promise<Subject[]> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const user = await getUserFromCookies(cookies());
-     if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
-        return [];
-    }
-    const collegeId = user.college_id;
-    const allClasses = [...mockInitialClasses, ...mockCreatedClasses];
-    const allSubjects = [...mockInitialSubjects, ...mockCreatedSubjects];
+  try {
+    const user = await getUserFromCookies(await cookies());
 
-    return allSubjects
-        .filter(s => s.college_id === collegeId)
-        .map(subject => ({
-            ...subject,
-            class_name: allClasses.find(c => c.class_id === subject.class_id && c.college_id === collegeId)?.class_name || "Unknown Class"
-        }));
+    if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
+      console.warn('Unauthorized or missing college_id for fetchSubjectsForCollegeAdmin');
+      return [];
+    }
+
+    const token = (await cookies()).get('meritmatrix_session_token')?.value;
+
+    if (!token) {
+      console.warn('Missing token for fetchSubjectsForCollegeAdmin');
+      return [];
+    }
+
+    const response = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/subjects`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        }
+      }
+    );
+
+    return response.data as Subject[];
+  } catch (error: any) {
+    console.error('Error fetching subjects:', error.response?.data || error.message);
+    return [];
+  }
 }
 
 export async function fetchSubjectsForClass(classId: number): Promise<Subject[]> {
     await new Promise(resolve => setTimeout(resolve, 300));
-    const user = await getUserFromCookies(cookies());
+    const user = await getUserFromCookies(await cookies());
     if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
         return [];
     }
@@ -40,38 +55,45 @@ export async function fetchSubjectsForClass(classId: number): Promise<Subject[]>
 export async function createSubject(
   values: CreateSubjectFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; subject?: Subject }> {
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const user = await getUserFromCookies(await cookies());
 
-  const user = await getUserFromCookies(cookies());
   if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
     return { success: false, error: 'Unauthorized: Only College Admins or Teachers can create subjects, or college ID is missing.' };
   }
 
   const validatedFields = createSubjectSchema.safeParse(values);
-  if (!validatedFields.success) {
-    return { success: false, error: 'Invalid input for creating subject.' };
+if (!validatedFields.success) {
+  console.error('Zod validation failed:', validatedFields.error.format());
+  return { success: false, error: 'Invalid input for creating subject.' };
+}
+
+
+  try {
+    const token = (await cookies()).get('meritmatrix_session_token')?.value;
+
+    const response = await axios.post(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/subjects`,
+      validatedFields.data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        }
+      }
+    );
+
+    revalidatePath('/shared-management/subjects');
+
+    return {
+      success: true,
+      message: `Subject "${response.data.subject_name}" created successfully.`,
+      subject: response.data
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Failed to create subject.'
+    };
   }
-
-  const { class_id, subject_code, subject_name, type } = validatedFields.data;
-  
-  const newSubject: Subject = {
-    subject_id: Math.floor(Math.random() * 1000000) + 5000, 
-    class_id,
-    subject_code,
-    subject_name,
-    type,
-    college_id: user.college_id, 
-  };
-
-  mockCreatedSubjects.push(newSubject);
-
-  revalidatePath('/shared-management/subjects');
-
-  return {
-    success: true,
-    message: `Subject "${subject_name}" (mock) of type "${type}" added to class ID ${class_id} successfully.`,
-    subject: newSubject,
-  };
 }
 
 export async function updateSubject(
@@ -79,7 +101,7 @@ export async function updateSubject(
   values: CreateSubjectFormValues
 ): Promise<{ success: boolean; error?: string; message?: string; subject?: Subject }> {
     await new Promise(resolve => setTimeout(resolve, 500));
-    const user = await getUserFromCookies(cookies());
+    const user = await getUserFromCookies(await cookies());
     if (!user || (user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') || !user.college_id) {
         return { success: false, error: 'Unauthorized or college ID missing.' };
     }
