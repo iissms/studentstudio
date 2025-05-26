@@ -56,6 +56,7 @@ export interface Subject {
 export interface Exam {
   exam_id: number;
   class_id: number;
+  department_id: number; // ✅ Add this line
   class_name?: string; // For display
   name: string;
   marks: number; // Total marks

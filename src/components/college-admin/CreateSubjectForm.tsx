@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,8 +8,12 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { createSubjectSchema, type CreateSubjectFormValues } from '@/schemas/subject';
-import { createSubject, fetchClassesForCollegeAdmin } from '@/lib/actions'; // Updated import
+import {
+  createSubjectSchema,
+  type CreateSubjectFormValues,
+} from '@/schemas/subject';
+import { createSubject, fetchDepartmentsForCollegeAdmin } from '@/lib/actions';
+
 import {
   Form,
   FormControl,
@@ -25,46 +28,52 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import { DialogFooter } from '@/components/ui/dialog';
-import type { Class } from '@/types'; 
-import { z } from 'zod';
+import type { Department } from '@/types';
 
-interface CreateSubjectFormProps {
+export interface CreateSubjectFormProps {
   onSuccess?: () => void;
   setDialogOpen: (open: boolean) => void;
 }
 
-export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFormProps) {
+export function CreateSubjectForm({
+  onSuccess,
+  setDialogOpen,
+}: CreateSubjectFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
-  const [classes, setClasses] = React.useState<Class[]>([]);
-  const [isClassesLoading, setIsClassesLoading] = React.useState(true);
+  const [departments, setDepartments] = React.useState<Department[]>([]);
+  const [isDepartmentsLoading, setIsDepartmentsLoading] = React.useState(true);
 
   React.useEffect(() => {
-    async function loadClasses() {
-      setIsClassesLoading(true);
+    async function loadDepartments() {
+      setIsDepartmentsLoading(true);
       try {
-        const fetchedClasses = await fetchClassesForCollegeAdmin(); // Use new fetch action
-        setClasses(fetchedClasses);
+        const fetched = await fetchDepartmentsForCollegeAdmin();
+        setDepartments(fetched);
       } catch (error) {
-        console.error("Failed to fetch classes for subject form:", error);
-        toast({ title: "Error", description: "Could not load classes for selection.", variant: "destructive"});
-        setClasses([]);
+        console.error('Failed to fetch departments:', error);
+        toast({
+          title: 'Error',
+          description: 'Could not load departments for selection.',
+          variant: 'destructive',
+        });
+        setDepartments([]);
       } finally {
-        setIsClassesLoading(false);
+        setIsDepartmentsLoading(false);
       }
     }
-    loadClasses();
+    loadDepartments();
   }, [toast]);
 
   const form = useForm<CreateSubjectFormValues>({
     resolver: zodResolver(createSubjectSchema),
     defaultValues: {
-      class_id: undefined,
+      department_id: undefined,
       subject_code: '',
       subject_name: '',
-      type: undefined, 
+      type: undefined,
     },
   });
 
@@ -75,7 +84,9 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
       if (result.success) {
         toast({
           title: 'Subject Created',
-          description: result.message || `Subject "${values.subject_name}" has been successfully created.`,
+          description:
+            result.message ||
+            `Subject "${values.subject_name}" has been successfully created.`,
         });
         onSuccess?.();
         setDialogOpen(false);
@@ -101,41 +112,53 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <FormField
-  control={form.control}
-  name="class_id"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel htmlFor="class_id">Assign to Class</FormLabel>
-      <Select
-        onValueChange={(val) => field.onChange(Number(val))} // ✅ Convert to number
-        value={field.value?.toString()}                      // ✅ Convert number → string for <Select>
-        disabled={isLoading || isClassesLoading}
-      >
-        <FormControl>
-          <SelectTrigger id="class_id">
-            <SelectValue placeholder={isClassesLoading ? "Loading classes..." : "Select a class"} />
-          </SelectTrigger>
-        </FormControl>
-        <SelectContent>
-          {isClassesLoading ? (
-            <SelectItem value="loading" disabled>Loading...</SelectItem>
-          ) : classes.length > 0 ? (
-            classes.map((cls) => (
-              <SelectItem key={cls.class_id} value={cls.class_id.toString()}>
-                {cls.class_name} ({cls.academic_year})
-              </SelectItem>
-            ))
-          ) : (
-            <SelectItem value="no-classes" disabled>No classes available for your college</SelectItem>
+        <FormField
+          control={form.control}
+          name="department_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor="department_id">Department</FormLabel>
+              <Select
+                onValueChange={(val) => field.onChange(Number(val))}
+                value={field.value?.toString()}
+                disabled={isLoading || isDepartmentsLoading}
+              >
+                <FormControl>
+                  <SelectTrigger id="department_id">
+                    <SelectValue
+                      placeholder={
+                        isDepartmentsLoading
+                          ? 'Loading departments...'
+                          : 'Select a department'
+                      }
+                    />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {isDepartmentsLoading ? (
+                    <SelectItem value="loading" disabled>
+                      Loading...
+                    </SelectItem>
+                  ) : departments.length > 0 ? (
+                    departments.map((dept) => (
+                      <SelectItem
+                        key={dept.department_id}
+                        value={dept.department_id.toString()}
+                      >
+                        {dept.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-depts" disabled>
+                      No departments available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
           )}
-        </SelectContent>
-      </Select>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
-
+        />
 
         <FormField
           control={form.control}
@@ -146,7 +169,7 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
               <FormControl>
                 <Input
                   id="subject_name"
-                  placeholder="e.g., Physics, Mathematics"
+                  placeholder="e.g., Physics, Chemistry"
                   disabled={isLoading}
                   {...field}
                 />
@@ -165,7 +188,7 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
               <FormControl>
                 <Input
                   id="subject_code"
-                  placeholder="e.g., PHY101, MATH202"
+                  placeholder="e.g., PHY101, CHEM202"
                   disabled={isLoading}
                   {...field}
                 />
@@ -181,7 +204,7 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
           render={({ field }) => (
             <FormItem>
               <FormLabel htmlFor="type">Subject Type</FormLabel>
-               <Select
+              <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value}
                 disabled={isLoading}
@@ -203,11 +226,18 @@ export function CreateSubjectForm({ onSuccess, setDialogOpen }: CreateSubjectFor
         />
 
         <DialogFooter className="pt-4">
-          <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isLoading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDialogOpen(false)}
+            disabled={isLoading}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading || isClassesLoading}>
-            {(isLoading || isClassesLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isLoading || isDepartmentsLoading}>
+            {(isLoading || isDepartmentsLoading) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
             Add Subject
           </Button>
         </DialogFooter>

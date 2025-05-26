@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { assignSubjectsToExamSchema, type AssignSubjectsToExamFormValues } from '@/schemas/examSubjectMap';
-import { assignSubjectsToExam, fetchSubjectsForClass } from '@/lib/actions'; // Updated import
+import { assignSubjectsToExam, fetchSubjectsByDepartment } from '@/lib/actions';
 import {
   Form,
   FormControl,
@@ -38,14 +38,18 @@ export function AssignSubjectsToExamForm({ exam, onSuccess, setDialogOpen }: Ass
 
   React.useEffect(() => {
     async function loadSubjects() {
-      if (exam?.class_id) { // college_id check happens in the action
+      if (exam?.department_id) {
         setIsLoadingSubjects(true);
         try {
-          const fetchedSubjects = await fetchSubjectsForClass(exam.class_id); // Use new fetch action
+          const fetchedSubjects = await fetchSubjectsByDepartment(exam.department_id);
           setAvailableSubjects(fetchedSubjects);
         } catch (error) {
           console.error("Failed to fetch subjects for exam assignment:", error);
-          toast({ title: "Error", description: "Could not load subjects for this class.", variant: "destructive"});
+          toast({
+            title: "Error",
+            description: "Could not load subjects for this department.",
+            variant: "destructive"
+          });
           setAvailableSubjects([]);
         } finally {
           setIsLoadingSubjects(false);
@@ -57,6 +61,7 @@ export function AssignSubjectsToExamForm({ exam, onSuccess, setDialogOpen }: Ass
     }
     loadSubjects();
   }, [exam, toast]);
+  
 
   const form = useForm<AssignSubjectsToExamFormValues>({
     resolver: zodResolver(assignSubjectsToExamSchema),
@@ -182,3 +187,4 @@ export function AssignSubjectsToExamForm({ exam, onSuccess, setDialogOpen }: Ass
     </Form>
   );
 }
+ 
