@@ -65,6 +65,7 @@ export interface Exam {
   end_date: string; // YYYY-MM-DD
   college_id?: number; // To associate with a college (via class)
   assigned_subject_ids?: number[]; // Optional: For easier tracking or display
+  subjects?: Subject[];
 }
 
 export interface ExamSubjectMap {

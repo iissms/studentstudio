@@ -12,30 +12,6 @@ import { AssignSubjectsToExamForm } from '@/components/college-admin/AssignSubje
 import type { Exam } from '@/types'; 
 
 // Mock function to get exams for display
-async function getMockExams(collegeId?: number): Promise<Exam[]> {
-  await new Promise(resolve => setTimeout(resolve, 500)); 
-  const mockClasses = [
-    { class_id: 101, class_name: "1st PUC Science" },
-    { class_id: 102, class_name: "2nd PUC Commerce" },
-  ];
-
-  const allExams: Exam[] = [
-    { exam_id: 301, class_id: 101, name: "Physics Midterm I", marks: 50, min_marks: 17, start_date: "2024-08-15", end_date: "2024-08-15", college_id: 1, assigned_subject_ids: [201, 205] },
-    { exam_id: 302, class_id: 102, name: "Accountancy Unit Test 1", marks: 25, min_marks: 9, start_date: "2024-09-01", end_date: "2024-09-01", college_id: 1, assigned_subject_ids: [206] },
-    { exam_id: 303, class_id: 101, name: "Chemistry Final Practical", marks: 30, min_marks: 10, start_date: "2025-03-10", end_date: "2025-03-12", college_id: 1 },
-  ];
-  
-  // In a real app, newly created exams from `mockCreatedExams` in actions.ts should also be fetched here.
-  // For this mock, we are only showing the static list above.
-
-  return allExams
-    .filter(e => collegeId ? e.college_id === collegeId : true)
-    .map(e => ({
-      ...e,
-      class_name: mockClasses.find(c => c.class_id === e.class_id)?.class_name || "Unknown Class"
-    }));
-}
-
 
 export default function ManageExamsPage() {
   const [exams, setExams] = React.useState<Exam[]>([]);
@@ -43,20 +19,6 @@ export default function ManageExamsPage() {
   const [isCreateExamDialogOpen, setIsCreateExamDialogOpen] = React.useState(false);
   const [isAssignSubjectsDialogOpen, setIsAssignSubjectsDialogOpen] = React.useState(false);
   const [currentExamForAssignment, setCurrentExamForAssignment] = React.useState<Exam | null>(null);
-
-
-  // TODO: In a real app, get the logged-in college admin's college_id
-  const collegeAdminCollegeId = 1; // Placeholder
-
-  React.useEffect(() => {
-    async function loadExams() {
-      setIsLoading(true);
-      const fetchedExams = await getMockExams(collegeAdminCollegeId);
-      setExams(fetchedExams);
-      setIsLoading(false);
-    }
-    loadExams();
-  }, [collegeAdminCollegeId]);
 
   const handleExamCreated = () => {
     // For now, with static mock getMockExams, this won't auto-refresh the list.

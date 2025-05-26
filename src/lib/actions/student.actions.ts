@@ -144,3 +144,36 @@ export async function updateStudent(
 
     return { success: false, error: `Student with ID ${studentId} not found in your college.` };
 }
+
+
+export async function fetchStudentsByClassId(classId: number): Promise<Student[]> {
+  const cookieStore = cookies();
+  const token = (await cookieStore).get('meritmatrix_session_token')?.value;
+  const user = await getUserFromCookies(await cookies());
+
+  if (!token || !user || !user.college_id) {
+    console.warn('Unauthorized or missing token/college_id.');
+    return [];
+  }
+
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/students/by-class/${classId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      console.error('Failed to fetch students:', res.statusText);
+      return [];
+    }
+
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('Error fetching students:', err);
+    return [];
+  }
+}

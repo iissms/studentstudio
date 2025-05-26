@@ -14,7 +14,8 @@ import { AssignSubjectsToExamForm } from '@/components/college-admin/AssignSubje
 import type { Exam } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { fetchExamsForCollegeAdmin } from '@/lib/actions'; // Updated import
-
+import { generateExamExcel } from '@/utils/generateExamExcel';
+import { Download } from "lucide-react";
 
 export default function ManageExamsPage() {
   const { toast } = useToast();
@@ -145,6 +146,20 @@ export default function ManageExamsPage() {
                       <p className="text-xs text-muted-foreground mt-1">
                         Assigned Subjects IDs: {exam.assigned_subject_ids?.join(', ') || 'None'}
                       </p>
+                      <ul className="text-xs text-muted-foreground mt-1">
+                      {exam.subjects?.length ? (
+                        <ul>
+                          {exam.subjects.map(subject => (
+                            <li key={subject.subject_id}>
+                              {subject.subject_name} ({subject.subject_code}) - {subject.type}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>No subjects assigned to this exam.</p>
+                      )}
+
+                          </ul>
                     </div>
                     <div className="flex flex-col space-y-2 items-end">
                         <Button variant="outline" size="sm" onClick={() => openAssignSubjectsDialog(exam)} className="w-full justify-start">
@@ -160,6 +175,15 @@ export default function ManageExamsPage() {
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                           </Button>
+                          <Button
+  variant="secondary"
+  size="sm"
+  onClick={() => generateExamExcel(exam)}
+  className="flex items-center"
+>
+  <Download className="mr-1 h-4 w-4" />
+  Download Excel
+</Button>
                         </div>
                     </div>
                   </div>
